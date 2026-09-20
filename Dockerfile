@@ -67,15 +67,17 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modul
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
 
 # Skrinshotlar shu yerga tushadi (S3 sozlanmagan bo'lsa).
+# `VOLUME` e'lon qilinmaydi: Railway va shunga o'xshash platformalar
+# diskni o'zi ulaydi, Dockerfile'dagi e'lon esa ularga xalaqit beradi.
+# Docker Compose'da disk `docker-compose.yml` da ko'rsatilgan.
 RUN mkdir -p /app/uploads && chown nextjs:nodejs /app/uploads
 ENV UPLOAD_DIR=/app/uploads
-VOLUME /app/uploads
 
 USER nextjs
 
 EXPOSE 3000
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD wget --spider -q http://127.0.0.1:3000/api/health || exit 1
+# `HEALTHCHECK` ham yo'q: bulutli platformalar sog'liqni tashqaridan
+# o'zi tekshiradi va `/api/health` manzili shu uchun turibdi.
 
 CMD ["node", "server.js"]
