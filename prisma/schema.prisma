@@ -1,0 +1,568 @@
+// ONEBO FX — 1-bosqich sxemasi.
+// Hisoblanadigan qiymatlar (R, P&L, risk foizi) bazada saqlanmaydi —
+// ular src/lib/stats.ts da narxlardan chiqariladi, shunda kirish narxi
+// tuzatilganda qolgan hamma narsa o'zi to'g'rilanadi.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Direction {
+  LONG
+  SHORT
+}
+
+enum TradeSource {
+  MANUAL
+  SCREENSHOT
+  IMPORT
+}
+
+enum SetupStatus {
+  ACTIVE
+  TESTING
+  ARCHIVED
+}
+
+enum Program {
+  HYPER_GROWTH
+  HIGH_STAKES
+  BOOTCAMP
+  CUSTOM
+}
+
+enum ChatRole {
+  USER
+  ASSISTANT
+}
+
+enum MentorshipStatus {
+  /// Taklif yaratilgan, ikkinchi tomon hali qo'shilmagan.
+  PENDING
+  ACTIVE
+  ENDED
+}
+
+enum MentorRole {
+  MENTOR
+  STUDENT
+}
+
+enum Plan {
+  FREE
+  PRO
+  MENTOR
+}
+
+enum PaymentProvider {
+  PAYME
+  CLICK
+  UZUM
+  /** Qo'lda: o'tkazma qilinadi, admin tasdiqlaydi. */
+  MANUAL
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  /// Kun chegarasi, kalendar va limitlar shu mintaqada hisoblanadi.
+  timezone     String    @default("Asia/Tashkent")
+  /// Interfeys tili: uz, ru yoki en.
+  locale       String    @default("uz")
+  createdAt    DateTime  @default(now())
+
+  /// Amaldagi tarif. Muddat tugasa kod darajasida bepulga tushadi —
+  /// bu maydon o'zi o'zgarmaydi, tugash sanasi hal qiladi.
+  plan         Plan      @default(FREE)
+  planUntil    DateTime?
+  /// Ro'yxatdan o'tganda beriladigan sinov muddati.
+  trialEndsAt  DateTime?
+  /// Qo'lda to'lovlarni tasdiqlaydigan xodim.
+  isAdmin      Boolean   @default(false)
+
+  /// Sessiya avlodi. Parol almashganda bittaga oshadi va shu bilan
+  /// boshqa qurilmalardagi eski kirishlar kuchini yo'qotadi.
+  sessionVersion Int     @default(0)
+
+  /// Pochta manzili tasdiqlangan payt. `null` — hali tasdiqlanmagan:
+  /// ilova ishlayveradi, lekin bizning nomimizdan xat jo'natilmaydi.
+  emailVerifiedAt DateTime?
+
+  /// Hisobni o'chirish so'ralgan payt. Ma'lumot darhol o'chmaydi —
+  /// shu sanadan 30 kun o'tgach tozalanadi, shu orada bekor qilsa bo'ladi.
+  deletionRequestedAt DateTime?
+
+  /// Namuna hisob: ma'lumoti o'ylab topilgan va muddati tugagach
+  /// butunlay o'chiriladi. Oddiy hisoblarda `false` va `null`.
+  isDemo         Boolean @default(false)
+  demoExpiresAt  DateTime?
+
+  accounts     Account[]
+  setups       Setup[]
+  instruments  Instrument[]
+  journal      JournalEntry[]
+  alerts       RiskAlert[]
+  briefs       DailyBrief[]
+  chat         ChatMessage[]
+
+  invitesSent  Mentorship[]  @relation("MentorshipCreated")
+  asMentor     Mentorship[]  @relation("MentorOf")
+  asStudent    Mentorship[]  @relation("StudentOf")
+  mentorNotes  MentorNote[]  @relation("NoteAuthor")
+  payments     Payment[]
+  resets       PasswordReset[]
+  verifications EmailVerification[]
+
+  @@index([isDemo, demoExpiresAt])
+  /// Muddati kelgan o'chirishlarni tez topish uchun.
+  @@index([deletionRequestedAt])
+}
+
+/// Parolni tiklash havolasi.
+///
+/// Havoladagi kalitning o'zi saqlanmaydi — faqat SHA-256 xeshi. Bazani
+/// ko'rgan odam ham havolani tiklay olmaydi. Har kalit bir marta
+/// ishlaydi va muddati o'tgach yaroqsiz bo'ladi.
+model PasswordReset {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tokenHash String    @unique
+  expiresAt DateTime
+  /// Ishlatilgan payt. To'ldirilgan bo'lsa kalit qayta ishlamaydi.
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+/// Pochta manzilini tasdiqlash kaliti.
+///
+/// Parolni tiklash bilan bir xil qoidalar: bazada faqat xesh turadi,
+/// kalit bir marta ishlaydi va muddati bor. Manzil ham yoziladi —
+/// kalit berilgandan keyin manzil o'zgarsa, eski kalit yangisini
+/// tasdiqlab qo'ymasligi uchun.
+model EmailVerification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  email     String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+/// Bitta to'lov. Tarif tarixi ham shu yerda — hisob-kitob aniq qolishi
+/// uchun har bir to'lov alohida yozuv bo'lib turadi.
+///
+/// Summa **tiyin**da. Payme tiyin talab qiladi, Click so'm yuboradi —
+/// ikkalasi ham shu yerda tiyinga keltiriladi.
+model Payment {
+  id           String          @id @default(cuid())
+  userId       String
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  plan         Plan
+  months       Int
+  amount       Int
+  currency     String          @default("UZS")
+
+  provider     PaymentProvider
+  status       PaymentStatus   @default(PENDING)
+
+  /// Payme tranzaksiya id si yoki Click click_trans_id.
+  providerTxId String?
+  /// Payme holat mashinasi: 1, 2, -1, -2.
+  state        Int             @default(0)
+  /// Payme bekor qilish sababi.
+  cancelReason Int?
+
+  /// Qo'lda to'lovda foydalanuvchi ko'rsatgan chek/o'tkazma raqami.
+  reference    String          @default("")
+
+  createdAt    DateTime        @default(now())
+  /// Provayder tranzaksiyani yaratgan payt.
+  txCreatedAt  DateTime?
+  paidAt       DateTime?
+  cancelledAt  DateTime?
+
+  @@unique([provider, providerTxId])
+  @@index([userId, createdAt])
+  @@index([status])
+}
+
+/// Mentor va o'quvchi aloqasi.
+///
+/// Taklifni istalgan tomon yaratadi va o'z rolini ko'rsatadi; ikkinchi
+/// tomon kodni kiritib qo'shiladi. O'quvchi nimani ulashishini o'zi
+/// belgilaydi — psixologiya suhbati esa hech qachon ulashilmaydi.
+model Mentorship {
+  id           String           @id @default(cuid())
+
+  /// Qo'shilish kodi — taklif yaratilganda beriladi.
+  inviteCode   String           @unique
+  /// Taklifni yaratgan odam qaysi rolda.
+  inviterRole  MentorRole
+
+  createdById  String
+  createdBy    User             @relation("MentorshipCreated", fields: [createdById], references: [id], onDelete: Cascade)
+
+  mentorId     String?
+  mentor       User?            @relation("MentorOf", fields: [mentorId], references: [id], onDelete: Cascade)
+  studentId    String?
+  student      User?            @relation("StudentOf", fields: [studentId], references: [id], onDelete: Cascade)
+
+  status       MentorshipStatus @default(PENDING)
+
+  /// O'quvchi nazorati: mentor nimani ko'radi.
+  shareTrades  Boolean          @default(true)
+  shareAlerts  Boolean          @default(true)
+  shareJournal Boolean          @default(false)
+
+  createdAt    DateTime         @default(now())
+  acceptedAt   DateTime?
+  endedAt      DateTime?
+
+  notes        MentorNote[]
+
+  @@index([mentorId, status])
+  @@index([studentId, status])
+}
+
+/// Aloqadagi izoh. Ikkala tomon ham yoza oladi.
+model MentorNote {
+  id           String     @id @default(cuid())
+  mentorshipId String
+  mentorship   Mentorship @relation(fields: [mentorshipId], references: [id], onDelete: Cascade)
+
+  authorId     String
+  author       User       @relation("NoteAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  /// Izoh aniq bir savdoga tegishli bo'lsa.
+  tradeId      String?
+  trade        Trade?     @relation(fields: [tradeId], references: [id], onDelete: SetNull)
+
+  body         String
+  createdAt    DateTime   @default(now())
+  /// Ikkinchi tomon o'qigan payt.
+  readAt       DateTime?
+
+  @@index([mentorshipId, createdAt])
+}
+
+/// Psixologiya suhbati. Foydalanuvchi holatini yozadi, AI javob qaytaradi.
+/// Bu yerda savdo signali yo'q — faqat holatni tushunish va tinchlantirish.
+model ChatMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  role      ChatRole
+  content   String
+
+  /// Foydalanuvchi xabari yozilganda tanlangan kayfiyat belgisi (ixtiyoriy).
+  moodTag   String   @default("")
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+/// Kunlik kundalik yozuvi. Bir kunga bitta yozuv.
+model JournalEntry {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Kun — vaqtsiz, mahalliy sana bo'yicha 00:00 da saqlanadi.
+  date       DateTime
+
+  /// Sessiyagacha reja: bias, kuzatuvdagi instrumentlar, yangiliklar.
+  plan       String   @default("")
+  /// Sessiya davomidagi izohlar.
+  notes      String   @default("")
+  /// Kun yakuni.
+  review     String   @default("")
+  /// Xulosalar — har biri alohida qator.
+  lessons    String[] @default([])
+  tags       String[] @default([])
+
+  discipline Int?
+  patience   Int?
+  focus      Int?
+  stress     Int?
+
+  /// Bajarilgan odatlar ro'yxati (HABITS dagi yorliqlar).
+  habitsDone String[] @default([])
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+/// Savdo hisobi. Risk limitlari shu yerda — The5ers dasturlari standart
+/// qiymat sifatida, lekin har biri qo'lda o'zgartiriladi.
+model Account {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name            String
+  broker          String   @default("")
+  login           String   @default("")
+  currency        String   @default("USD")
+  startingBalance Float
+
+  program         Program  @default(CUSTOM)
+  dailyLossPct    Float    @default(3)
+  maxDrawdownPct  Float    @default(6)
+  profitTargetPct Float    @default(10)
+  /// Bir savdodagi tavsiya etilgan risk, hisob foizida.
+  riskPerTradePct Float    @default(1)
+
+  isActive        Boolean  @default(true)
+  isArchived      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  trades          Trade[]
+
+  @@index([userId])
+}
+
+/// Instrument spetsifikatsiyasi. pipValuePerLot — 1 lot uchun bitta
+/// punktning USD dagi qiymati; risk va P&L shu raqamdan hisoblanadi.
+model Instrument {
+  id               String  @id @default(cuid())
+  userId           String
+  user             User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  symbol           String
+  pipSize          Float   @default(0.0001)
+  pipValuePerLot   Float   @default(10)
+  /// Narxda nechta kasr raqami ko'rsatilsin.
+  priceDecimals    Int     @default(5)
+
+  @@unique([userId, symbol])
+}
+
+model Setup {
+  id          String      @id @default(cuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String      @default("")
+  entryRules  String[]    @default([])
+  exitRules   String[]    @default([])
+  riskRules   String[]    @default([])
+  timeframes  String[]    @default([])
+  sessions    String[]    @default([])
+  status      SetupStatus @default(ACTIVE)
+  createdAt   DateTime    @default(now())
+
+  trades      Trade[]
+
+  @@index([userId])
+}
+
+model Trade {
+  id         String      @id @default(cuid())
+  accountId  String
+  account    Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  setupId    String?
+  setup      Setup?      @relation(fields: [setupId], references: [id], onDelete: SetNull)
+
+  symbol     String
+  direction  Direction
+  openedAt   DateTime
+  closedAt   DateTime?
+
+  entryPrice Float
+  stopPrice  Float
+  takeProfit Float?
+  exitPrice  Float?
+  volume     Float
+
+  /// Instrument spetsifikatsiyasining savdo paytidagi nusxasi — keyin
+  /// spetsifikatsiya o'zgarsa, eski savdolar natijasi o'zgarmaydi.
+  pipSize       Float  @default(0.0001)
+  pipValuePerLot Float @default(10)
+
+  commission Float       @default(0)
+  swap       Float       @default(0)
+  /// Broker ko'rsatgan aniq natija. Berilsa, hisoblangan P&L o'rniga shu ishlatiladi.
+  pnlOverride Float?
+
+  session    String      @default("")
+  timeframe  String      @default("")
+  tags       String[]    @default([])
+  notes      String      @default("")
+
+  /// Reja qoidalariga to'liq rioya qilindimi.
+  ruleCompliant Boolean   @default(true)
+  source        TradeSource @default(MANUAL)
+  isBacktest    Boolean   @default(false)
+
+  /// Savdo davomidagi eng katta qarama-qarshi va foydali harakat, R da.
+  mae        Float?
+  mfe        Float?
+
+  discipline Int?
+  patience   Int?
+  confidence Int?
+  stress     Int?
+
+  /// <userId>/<fayl> ko'rinishidagi kalit; /api/screenshot/<kalit> orqali beriladi.
+  screenshotKey String?
+
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  checks     TradeCheck[]
+  mentorNotes MentorNote[]
+
+  @@index([accountId, openedAt])
+  @@index([setupId])
+}
+
+enum AlertKind {
+  DAILY_LIMIT_NEAR
+  DAILY_LIMIT_HIT
+  LOSS_STREAK
+  REVENGE_TRADE
+  DRAWDOWN_NEAR
+  CORRELATION
+  RISK_TOO_BIG
+}
+
+enum AlertAction {
+  /// Ogohlantirishdan keyin savdo baribir qo'shilgan.
+  IGNORED
+  /// Foydalanuvchi to'xtashni tanlagan.
+  STOPPED
+}
+
+/// Ko'rsatilgan har bir ogohlantirish yoziladi. Maqsad — bloklash emas,
+/// oy oxirida "ogohlantirishga e'tibor bermagan savdolar qanday tugadi"
+/// degan raqamni ko'rsatish.
+model RiskAlert {
+  id        String      @id @default(cuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId String
+
+  kind      AlertKind
+  message   String
+  /// Ogohlantirish paytidagi holat: foizlar, summalar.
+  context   String      @default("")
+
+  action    AlertAction?
+  /// Ogohlantirishdan keyin ochilgan savdo.
+  tradeId   String?
+
+  createdAt DateTime    @default(now())
+
+  @@index([userId, createdAt])
+  @@index([tradeId])
+}
+
+/// Iqtisodiy kalendar voqeasi. Kuniga bir marta provayderdan olinadi va
+/// hamma foydalanuvchilar uchun umumiy — shuning uchun so'rovlar soni
+/// foydalanuvchilar soniga bog'liq emas.
+model EconomicEvent {
+  id         String   @id @default(cuid())
+
+  date       DateTime
+  time       String   @default("")
+  currency   String
+  country    String   @default("")
+  title      String
+  /// 1 — past, 2 — o'rta, 3 — yuqori ta'sir.
+  importance Int      @default(1)
+
+  actual     String   @default("")
+  forecast   String   @default("")
+  previous   String   @default("")
+
+  source     String   @default("")
+  fetchedAt  DateTime @default(now())
+
+  @@unique([date, currency, title])
+  @@index([date])
+}
+
+/// Kunlik brifingning AI yozgan iqtisodiy qismi — kuniga bir marta
+/// yaratiladi va keshlanadi.
+model DailyBrief {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  date         DateTime
+  economicText String   @default("")
+  /// Tahlil qaysi voqealar asosida yozilgani — keyin tekshirish uchun.
+  eventCount   Int      @default(0)
+  dismissedAt  DateTime?
+  createdAt    DateTime @default(now())
+
+  @@unique([userId, date])
+}
+
+model TradeCheck {
+  id      String  @id @default(cuid())
+  tradeId String
+  trade   Trade   @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+
+  label   String
+  passed  Boolean @default(false)
+  order   Int     @default(0)
+
+  @@index([tradeId])
+}
+
+/// Ilovadagi xatolar.
+///
+/// Maqsadi — serverga kirmasdan turib nimadir buzilganini ko'rish.
+/// Yozuv **eng ko'pi bilan yordamchi**: uni yozib bo'lmasa ham asosiy
+/// ish to'xtamaydi. Shu sababli hech qanday majburiy bog'lanish yo'q —
+/// foydalanuvchi o'chsa ham xato yozuvi qolaveradi.
+model AppError {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  /// Qayerda yuz berdi: "demo", "report.send", "payme" kabi.
+  scope     String
+  message   String
+  /// Next bergan qisqa belgi — brauzerdagi xato bilan solishtirish uchun.
+  digest    String?
+  stack     String?
+  /// Kim ko'rgan (bo'lsa). Bog'lanish yo'q: hisob o'chsa ham qoladi.
+  userId    String?
+  /// Qaysi sahifa yoki amal.
+  path      String?
+
+  @@index([createdAt])
+  @@index([scope, createdAt])
+}

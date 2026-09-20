@@ -1,0 +1,64 @@
+name: CI
+
+# Har push va pull request da: lint, tiplar, testlar va yig'ish.
+# Uchalasi ham bazaga ulanmaydi — sof kod tekshiruvi, bir-ikki daqiqa.
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+concurrency:
+  # Bitta shoxda yangi push kelsa, eskisi bekor qilinadi.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      # Urinishlar chegarasining Redis yo'li shu bilan tekshiriladi.
+      # Redis bo'lmasa o'sha testlar o'tkazib yuboriladi, ish yiqilmaydi.
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 3s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Paketlar
+        run: npm ci
+
+      - name: Prisma klienti
+        run: npx prisma generate
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Tiplar
+        run: npm run typecheck
+
+      - name: Testlar
+        run: npm test
+        env:
+          REDIS_TEST_URL: redis://127.0.0.1:6379
+
+      - name: Yig'ish
+        run: npx next build
+        env:
+          # Yig'ish uchun baza kerak emas, lekin sozlama o'qiladi.
+          AUTH_SECRET: ci-uchun-uzun-tasodifiy-satr-32-belgi
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres

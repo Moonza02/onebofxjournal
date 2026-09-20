@@ -1,0 +1,147 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import 'tailwindcss';
+
+/* ONEBO FX dizayn tokenlari — maketdagi qiymatlar aynan. */
+@theme {
+  --color-bg: #07090d;
+  --color-panel: #0b0e13;
+  --color-card: #0e1116;
+  --color-card2: #141922;
+  --color-line: #1d232d;
+  --color-line2: #161b23;
+
+  /* Matn pog'onalari. Eng pastkisi ham har qanday fonda WCAG AA
+     talabidan (4.5) o'tadi — bu matnlar 11-12px, ya'ni "kichik". */
+  --color-txt: #f1f4f9;
+  --color-txt2: #a9b3c2;
+  --color-txt3: #939eb0;
+  --color-txt4: #768295;
+
+  --color-blue: #3b81fc;
+  --color-blued: #2c6be6;
+  /* Ko'k tugmaning hover holati. `blue` bu yerga to'g'ri kelmaydi:
+     oq matn bilan kontrasti 3.66 ga tushib ketadi. */
+  --color-blueh: #3070e8;
+  --color-bluel: #8ab1fd;
+  --color-win: #1fd08a;
+  --color-loss: #ff5f72;
+  /* Qizil tugma foni — oq matn uchun quyuqroq tus kerak. */
+  --color-lossd: #c94b5a;
+  --color-amber: #ffb020;
+
+  --font-display: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+  --font-body: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* Yarim shaffof fonlar — chiplar va ogohlantirish bloklari uchun. */
+@utility bg-blue-soft {
+  background-color: rgb(59 129 252 / 0.13);
+}
+@utility bg-win-soft {
+  background-color: rgb(31 208 138 / 0.13);
+}
+@utility bg-loss-soft {
+  background-color: rgb(255 95 114 / 0.13);
+}
+@utility bg-amber-soft {
+  background-color: rgb(255 176 32 / 0.13);
+}
+
+html,
+body {
+  background: var(--color-bg);
+  color: var(--color-txt);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  margin: 0;
+}
+
+/* Raqamlar ustunlarda tekis tursin. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+::selection {
+  background: rgb(59 129 252 / 0.3);
+}
+
+/* Ingichka skrollbar — to'q fonga mos. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #232a36 transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #232a36;
+  border-radius: 6px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+input,
+textarea,
+select,
+button {
+  font-family: inherit;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-txt4);
+}
+
+/* Fokus ko'rinishi — klaviatura bilan yurish uchun. */
+:focus-visible {
+  outline: 2px solid var(--color-blue);
+  outline-offset: 2px;
+}
+
+/* Maydonlarda `outline-none` turadi (chegara rangi bilan ko'rsatiladi),
+   lekin klaviatura bilan yurgan odamga faqat chegara yetarli emas —
+   fokus halqasi baribir chiziladi. */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--color-blue);
+  outline-offset: 1px;
+}
+
+/* Harakat bezovta qiladigan odam uchun — tizim sozlamasi hurmat qilinadi. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Mazmunga o'tish havolasi: odatda ko'rinmaydi, Tab bosilganda chiqadi. */
+.skip-link {
+  position: absolute;
+  left: 8px;
+  top: -64px;
+  z-index: 100;
+  border-radius: 10px;
+  background: var(--color-blued);
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  transition: top 0.15s ease;
+}
+.skip-link:focus-visible {
+  top: 8px;
+}

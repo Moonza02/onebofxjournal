@@ -1,0 +1,82 @@
+# ONEBO FX — ilova, baza va Redis bitta buyruq bilan.
+#
+#   cp .env.example .env     # DATABASE_URL va AUTH_SECRET to'ldiriladi
+#   docker compose up -d --build
+#
+# Baza jadvallari `migrate` xizmati orqali bir marta yaratiladi, keyin
+# ilova ishga tushadi.
+#
+# Baza va Redis manzilini bu fayl o'zi beradi — `.env` dagi
+# `DATABASE_URL` kompyuterda ishlash uchun, u konteyner ichida
+# to'g'ri kelmaydi (`localhost` u yerda boshqa narsa). Tashqi bazaga
+# ulanish kerak bo'lsa `COMPOSE_DATABASE_URL` qo'yiladi.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-onebo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-onebo}
+      POSTGRES_DB: ${POSTGRES_DB:-onebofx}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-onebo} -d ${POSTGRES_DB:-onebofx}']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    # Tashqaridan ochiq turishi shart emas — faqat ilova ko'radi.
+    expose:
+      - '5432'
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # Urinishlar chegarasi uchun — ma'lumot saqlash shart emas,
+    # shuning uchun diskka yozilmaydi.
+    command: ['redis-server', '--save', '', '--appendonly', 'no']
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    expose:
+      - '6379'
+
+  # Bir martalik: jadvallarni sxemaga moslaydi va tugaydi.
+  migrate:
+    build: .
+    restart: 'no'
+    env_file: .env
+    environment:
+      DATABASE_URL: ${COMPOSE_DATABASE_URL:-postgresql://${POSTGRES_USER:-onebo}:${POSTGRES_PASSWORD:-onebo}@db:5432/${POSTGRES_DB:-onebofx}?schema=public}
+    # `npx` emas: obrazda `node_modules/.bin` yo'q, npx esa paketni
+    # internetdan tortib olishga urinardi.
+    command: ['node', 'node_modules/prisma/build/index.js', 'db', 'push', '--skip-generate']
+    depends_on:
+      db:
+        condition: service_healthy
+
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: ${COMPOSE_DATABASE_URL:-postgresql://${POSTGRES_USER:-onebo}:${POSTGRES_PASSWORD:-onebo}@db:5432/${POSTGRES_DB:-onebofx}?schema=public}
+      REDIS_URL: ${COMPOSE_REDIS_URL:-redis://redis:6379}
+    ports:
+      - '${APP_PORT:-3000}:3000'
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  db-data:
+  uploads:
