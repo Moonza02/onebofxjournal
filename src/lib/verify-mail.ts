@@ -1,5 +1,5 @@
 import 'server-only';
-import { db } from './db';
+import { db, type Tx } from './db';
 import { getDict } from './i18n/server';
 import { isMailConfigured, sendMail, verifyEmail } from './mail';
 import { hashToken, newToken } from './reset';
@@ -42,7 +42,7 @@ export async function issueVerification(user: {
 
   const token = newToken();
 
-  await db.$transaction(async (tx: typeof db) => {
+  await db.$transaction(async (tx: Tx) => {
     // Ochiq kalitlar ko'payib ketmasin — har biri alohida yo'l.
     const open = await tx.emailVerification.findMany({
       where: { userId: user.id, usedAt: null, expiresAt: { gt: new Date() } },

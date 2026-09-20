@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import AuthShell from '@/components/auth/AuthShell';
 import { Icon } from '@/components/ui/icons';
-import { db } from '@/lib/db';
+import { db, type Tx } from '@/lib/db';
 import { getI18n } from '@/lib/i18n/server';
 import { hashToken, looksLikeToken } from '@/lib/reset';
 import { verificationUsable } from '@/lib/verify';
@@ -44,7 +44,7 @@ async function consume(token: string): Promise<Outcome> {
 
   // Kalitni faqat hali ishlatilmagan bo'lsa band qilamiz — ikki
   // so'rov bir vaqtda kelsa g'olibi bitta bo'ladi.
-  const ok = await db.$transaction(async (tx: typeof db) => {
+  const ok = await db.$transaction(async (tx: Tx) => {
     const claimed = await tx.emailVerification.updateMany({
       where: { id: row.id, usedAt: null },
       data: { usedAt: new Date() },

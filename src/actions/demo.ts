@@ -3,7 +3,7 @@
 import { randomUUID } from 'node:crypto';
 import { redirect } from 'next/navigation';
 import bcrypt from 'bcryptjs';
-import { db } from '@/lib/db';
+import { db, type Tx } from '@/lib/db';
 import { createSession } from '@/lib/session';
 import { clientKey, rateLimit } from '@/lib/ratelimit';
 import { getDict, getLocale } from '@/lib/i18n/server';
@@ -68,7 +68,7 @@ export async function startDemo(): Promise<DemoState> {
   let userId: string;
 
   try {
-    userId = await db.$transaction(async (tx: typeof db) => {
+    userId = await db.$transaction(async (tx: Tx) => {
       const user: { id: string } = await tx.user.create({
         data: {
           // Manzil haqiqiy bo'lishi shart emas va band bo'lib qolmasligi

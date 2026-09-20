@@ -55,6 +55,9 @@ jobs:
         run: npm test
         env:
           REDIS_TEST_URL: redis://127.0.0.1:6379
+          # Testlar bazaga bormaydi, lekin ular yuklaydigan modullar
+          # Prisma klientini yaratadi — u esa manzilsiz ishga tushmaydi.
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
 
       - name: Yig'ish
         run: npx next build

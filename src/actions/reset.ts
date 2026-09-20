@@ -2,7 +2,7 @@
 
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
-import { db } from '@/lib/db';
+import { db, type Tx } from '@/lib/db';
 import { createSession } from '@/lib/session';
 import { clientKey, rateLimit } from '@/lib/ratelimit';
 import { getDict } from '@/lib/i18n/server';
@@ -56,7 +56,7 @@ export async function requestReset(_prev: ResetState, formData: FormData): Promi
 
   const token = newToken();
 
-  await db.$transaction(async (tx: typeof db) => {
+  await db.$transaction(async (tx: Tx) => {
     // Ochiq turgan eski kalitlar ko'payib ketmasin: har biri alohida
     // yo'l bo'lib qoladi, shuning uchun soni cheklanadi.
     const open = await tx.passwordReset.findMany({
@@ -129,7 +129,7 @@ export async function applyReset(_prev: ResetState, formData: FormData): Promise
   const passwordHash = await bcrypt.hash(password, 10);
   let version = 0;
 
-  const ok = await db.$transaction(async (tx: typeof db) => {
+  const ok = await db.$transaction(async (tx: Tx) => {
     // Kalitni faqat hali ishlatilmagan bo'lsa band qilamiz — ikki
     // so'rov bir vaqtda kelsa, g'olibi bitta bo'ladi.
     const claimed = await tx.passwordReset.updateMany({

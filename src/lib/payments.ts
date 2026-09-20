@@ -1,5 +1,5 @@
 import 'server-only';
-import { db } from './db';
+import { db, type Tx } from './db';
 import {
   activePlan,
   extendUntil,
@@ -192,7 +192,7 @@ export async function getPayments(userId: string, take = 20): Promise<PaymentRow
  *  javob yo'qolganda so'rovni takrorlaydi.
  */
 export async function markPaid(paymentId: string, when = new Date()): Promise<void> {
-  await db.$transaction(async (tx: typeof db) => {
+  await db.$transaction(async (tx: Tx) => {
     const payment: PaymentRow | null = await tx.payment.findUnique({
       where: { id: paymentId },
       select: PAYMENT_SELECT,
@@ -227,7 +227,7 @@ export async function markCancelled(
   reason: number | null = null,
   when = new Date(),
 ): Promise<void> {
-  await db.$transaction(async (tx: typeof db) => {
+  await db.$transaction(async (tx: Tx) => {
     const payment: PaymentRow | null = await tx.payment.findUnique({
       where: { id: paymentId },
       select: PAYMENT_SELECT,

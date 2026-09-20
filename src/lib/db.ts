@@ -9,3 +9,15 @@ export const db =
   });
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db;
+
+/** Tranzaksiya ichidagi klient.
+ *
+ *  `db.$transaction(async (tx) => ...)` ga beriladigan `tx` — to'liq
+ *  `PrismaClient` emas: undan ulanishni boshqaradigan va ichma-ich
+ *  tranzaksiya ochadigan metodlar olib tashlangan. Turini shu yerda
+ *  bir marta e'lon qilamiz, har joyda takrorlamaymiz.
+ */
+export type Tx = Omit<
+  typeof db,
+  '$connect' | '$disconnect' | '$on' | '$transaction' | '$extends'
+>;
