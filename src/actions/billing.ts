@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { db } from '@/lib/db';
+import { siteUrl as appSite } from '@/lib/site';
 import { requireUser } from '@/lib/session';
 import { periodFor } from '@/lib/billing';
 import { createPayment, getPayment, markPaid } from '@/lib/payments';
@@ -22,7 +23,7 @@ const schema = z.object({
 });
 
 function siteUrl(): string {
-  return (process.env.APP_URL || '').replace(/\/$/, '');
+  return appSite() ?? '';
 }
 
 /** To'lovni boshlash.

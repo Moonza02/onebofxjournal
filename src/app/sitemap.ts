@@ -1,10 +1,11 @@
 import type { MetadataRoute } from 'next';
+import { siteUrl } from '@/lib/site';
 
 /** Ochiq sahifalar ro'yxati. Ilova ichi kirishni talab qiladi va
  *  bu yerga tushmaydi.
  */
 export default function sitemap(): MetadataRoute.Sitemap {
-  const site = process.env.APP_URL?.replace(/\/+$/, '') || 'https://onebofx.uz';
+  const site = siteUrl() ?? 'https://onebofx.uz';
   const now = new Date();
 
   return [

@@ -3,6 +3,7 @@
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { db, type Tx } from '@/lib/db';
+import { siteUrl } from '@/lib/site';
 import { createSession } from '@/lib/session';
 import { clientKey, rateLimit } from '@/lib/ratelimit';
 import { getDict } from '@/lib/i18n/server';
@@ -46,7 +47,7 @@ export async function requestReset(_prev: ResetState, formData: FormData): Promi
 
   if (!isMailConfigured()) return { error: d.reset.errSmtp };
 
-  const appUrl = process.env.APP_URL;
+  const appUrl = siteUrl();
   if (!appUrl) return { error: d.reset.errSmtp };
 
   const user = await db.user.findUnique({ where: { email }, select: { id: true, locale: true } });

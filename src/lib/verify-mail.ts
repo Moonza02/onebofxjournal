@@ -3,6 +3,7 @@ import { db, type Tx } from './db';
 import { getDict } from './i18n/server';
 import { isMailConfigured, sendMail, verifyEmail } from './mail';
 import { hashToken, newToken } from './reset';
+import { siteUrl } from './site';
 import { MAX_OPEN_VERIFICATIONS, verifyExpiry, verifyUrl } from './verify';
 import { rateLimit } from './ratelimit';
 
@@ -29,7 +30,7 @@ export async function issueVerification(user: {
 
   if (!isMailConfigured()) return { ok: false, error: d.verify.errSmtp };
 
-  const appUrl = process.env.APP_URL;
+  const appUrl = siteUrl();
   // Sabab boshqa — xabar ham boshqa bo'lsin, aks holda sozlagan odam
   // SMTP ni qayta-qayta tekshirib vaqt yo'qotadi.
   if (!appUrl) return { ok: false, error: d.verify.errAppUrl };

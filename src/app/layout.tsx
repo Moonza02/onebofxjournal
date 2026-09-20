@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { getI18n } from '@/lib/i18n/server';
 import { LOCALE_TAGS } from '@/lib/i18n';
+import { siteUrlObject } from '@/lib/site';
 
 /** Sarlavha va tavsif ham tanlangan tilda — ulashilgan havola
  *  foydalanuvchi ko'rgan til bilan bir xil ko'rinadi.
@@ -9,12 +10,12 @@ import { LOCALE_TAGS } from '@/lib/i18n';
 export async function generateMetadata(): Promise<Metadata> {
   const { locale, d } = await getI18n();
   const title = `${d.app.name} — ${d.app.tagline}`;
-  const site = process.env.APP_URL?.replace(/\/+$/, '');
 
   return {
     // Havola Telegram yoki ijtimoiy tarmoqda ulashilganda sarlavha va
-    // tavsif shu yerdan olinadi.
-    metadataBase: site ? new URL(site) : undefined,
+    // tavsif shu yerdan olinadi. `APP_URL` yaroqsiz bo'lsa bu joy
+    // bo'sh qoladi — sahifa esa ishlayveradi (qarang: lib/site.ts).
+    metadataBase: siteUrlObject(),
     title,
     description: d.app.description,
     applicationName: d.app.name,

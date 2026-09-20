@@ -12,6 +12,7 @@ import { deleteUserObjects } from '@/lib/storage';
 import { logError } from '@/lib/log';
 import { deletionEmail, isMailConfigured, sendMail } from '@/lib/mail';
 import { DELETION_GRACE_DAYS } from '@/lib/verify';
+import { siteUrl } from '@/lib/site';
 
 export type SettingsState = { error?: string; ok?: boolean };
 
@@ -154,12 +155,12 @@ export async function deleteAccount(
 async function notifyDeletion(user: { id: string; email: string; locale: string }): Promise<void> {
   try {
     if (!isMailConfigured()) return;
-    const appUrl = process.env.APP_URL;
+    const appUrl = siteUrl();
     if (!appUrl) return;
 
     const dict = await getDict(user.locale);
     const { subject, text, html } = deletionEmail({
-      url: `${appUrl.replace(/\/+$/, '')}/login`,
+      url: `${appUrl}/login`,
       days: DELETION_GRACE_DAYS,
       d: dict,
     });

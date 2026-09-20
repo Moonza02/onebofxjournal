@@ -5,6 +5,7 @@
  *  ko'rinib turadigan belgi chiqadi, chunki jim qolgan bo'sh joy
  *  e'tibordan chetda qolib ketishi mumkin.
  */
+import { siteUrl } from './site';
 
 export type LegalParty = {
   company: string;
@@ -39,7 +40,7 @@ export function legalParty(): LegalParty {
     address: fields.address.text,
     email: fields.email.text,
     phone: fields.phone.text,
-    site: (process.env.APP_URL || 'onebofx.uz').replace(/^https?:\/\//, '').replace(/\/+$/, ''),
+    site: (siteUrl() ?? 'https://onebofx.uz').replace(/^https?:\/\//, ''),
     complete: Object.values(fields).every((f) => f.filled),
   };
 }
