@@ -2,39 +2,29 @@ import 'server-only';
 import { fill, type Dict } from './i18n';
 import { VERIFY_TTL_MINUTES } from './verify';
 import nodemailer from 'nodemailer';
+import { brevoPayload, sendViaBrevo } from './mail-brevo';
+import { pickMail as pick, type BrevoConfig, type MailConfig, type SmtpConfig } from './mail-config';
 
 /** Pochta jo'natish.
  *
- *  SMTP sozlanmagan bo'lsa jo'natish o'rniga aniq xato qaytadi —
- *  "yuborildi" deb yolg'on ko'rsatmaslik uchun.
+ *  Ikki yo'l bor va tartibi muhim:
+ *
+ *  1. **HTTPS (Brevo)** — ishlab chiqarish uchun. Bulut provayderlari
+ *     SMTP portlarini (25, 465, 587) tashqariga yopadi, shuning uchun
+ *     serverdan `nodemailer` bilan jo'natib bo'lmaydi: ulanish shunchaki
+ *     kutib qoladi va "Connection timeout" beradi.
+ *  2. **SMTP** — kompyuterda ishlaganda qulay: Gmail app-paroli bilan
+ *     hech qanday xizmatga ro'yxatdan o'tmasdan sinab ko'rish mumkin.
+ *
+ *  Sozlanmagan bo'lsa jo'natish o'rniga aniq xato qaytadi — "yuborildi"
+ *  deb yolg'on ko'rsatmaslik uchun.
  */
 
-export type MailConfig = {
-  host: string;
-  port: number;
-  secure: boolean;
-  user: string;
-  pass: string;
-  from: string;
-};
+export { pickMail } from './mail-config';
+export type { BrevoConfig, MailConfig, SmtpConfig } from './mail-config';
 
 export function mailConfig(): MailConfig | null {
-  const host = process.env.SMTP_HOST;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  if (!host || !user || !pass) return null;
-
-  const port = Number(process.env.SMTP_PORT ?? 587);
-
-  return {
-    host,
-    port,
-    // 465 — to'g'ridan-to'g'ri TLS; qolganlari STARTTLS orqali ko'tariladi.
-    secure: port === 465,
-    user,
-    pass,
-    from: process.env.MAIL_FROM || `ONEBO FX <${user}>`,
-  };
+  return pick(process.env);
 }
 
 export function isMailConfigured(): boolean {
@@ -52,43 +42,77 @@ export async function sendMail(options: {
 }): Promise<{ ok: boolean; error?: string }> {
   const config = mailConfig();
   if (!config) {
-    return { ok: false, error: 'SMTP sozlanmagan (SMTP_HOST, SMTP_USER, SMTP_PASS).' };
+    return { ok: false, error: 'Pochta sozlanmagan (BREVO_API_KEY yoki SMTP_HOST/USER/PASS).' };
   }
 
   try {
-    const transport = nodemailer.createTransport({
-      host: config.host,
-      port: config.port,
-      secure: config.secure,
-      auth: { user: config.user, pass: config.pass },
-      // Muddatsiz kutish yaramaydi: javob bermayotgan SMTP ro'yxatdan
-      // o'tishni ikki daqiqaga osib qo'yishi mumkin edi.
-      connectionTimeout: 8000,
-      greetingTimeout: 8000,
-      socketTimeout: 15000,
-    });
+    const result =
+      config.kind === 'brevo' ? await sendBrevo(config, options) : await sendSmtp(config, options);
 
-    await transport.sendMail({
-      from: config.from,
-      to: options.to,
-      subject: options.subject,
-      text: options.text,
-      html: options.html,
-      attachments: options.attachments,
-    });
-
-    return { ok: true };
+    if (!result.ok) note(options.to, result.error ?? 'nomalum');
+    return result;
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Pochta jo‘natilmadi.';
-
-    // Server log'iga **har doim** yoziladi, chaqiruvchi nima qilishidan
-    // qat'i nazar. Bu qator bo'lmagani qimmatga tushdi: jo'natish rad
-    // etilgan, foydalanuvchiga esa "sozlanmagan" deb ko'rsatilgan va
-    // haqiqiy sabab hech qayerda qolmagan.
-    console.error(`[mail] jo‘natilmadi (${options.to.split('@')[1] ?? '?'}): ${message}`);
-
+    note(options.to, message);
     return { ok: false, error: message };
   }
+}
+
+/** Xato server log'iga **har doim** tushadi, chaqiruvchi nima qilishidan
+ *  qat'i nazar. Bu qator bo'lmagani bir necha soatga tushdi: jo'natish
+ *  rad etilgan, foydalanuvchiga esa "sozlanmagan" deb ko'rsatilgan va
+ *  provayderning haqiqiy javobi hech qayerda qolmagan.
+ *
+ *  Manzilning faqat domeni yoziladi.
+ */
+function note(to: string, message: string): void {
+  console.error(`[mail] jo‘natilmadi (${to.split('@')[1] ?? '?'}): ${message}`);
+}
+
+type SendOptions = {
+  to: string;
+  subject: string;
+  text: string;
+  html?: string;
+  attachments?: Attachment[];
+};
+
+async function sendBrevo(
+  config: BrevoConfig,
+  options: SendOptions,
+): Promise<{ ok: boolean; error?: string }> {
+  const payload = brevoPayload(options, config.from);
+  if (!payload) return { ok: false, error: `MAIL_FROM da manzil topilmadi: ${config.from}` };
+
+  return sendViaBrevo(config.apiKey, payload);
+}
+
+async function sendSmtp(
+  config: SmtpConfig,
+  options: SendOptions,
+): Promise<{ ok: boolean; error?: string }> {
+  const transport = nodemailer.createTransport({
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    auth: { user: config.user, pass: config.pass },
+    // Muddatsiz kutish yaramaydi: javob bermayotgan SMTP ro'yxatdan
+    // o'tishni ikki daqiqaga osib qo'yishi mumkin edi.
+    connectionTimeout: 8000,
+    greetingTimeout: 8000,
+    socketTimeout: 15000,
+  });
+
+  await transport.sendMail({
+    from: config.from,
+    to: options.to,
+    subject: options.subject,
+    text: options.text,
+    html: options.html,
+    attachments: options.attachments,
+  });
+
+  return { ok: true };
 }
 
 export { mailFromAddress } from './mail-address';

@@ -10,6 +10,7 @@
  *  xatosida chaqiradi va biz matnni Railway log'iga yozamiz.
  */
 import { mailFromAddress } from './lib/mail-address';
+import { pickMail } from './lib/mail-config';
 
 /** Server ko'tarilganda bir marta ishlaydi.
  *
@@ -23,31 +24,38 @@ import { mailFromAddress } from './lib/mail-address';
 export function register(): void {
   const need = (keys: string[]) => keys.filter((key) => !(process.env[key] ?? '').trim());
 
-  const mail = need(['SMTP_HOST', 'SMTP_USER', 'SMTP_PASS']);
-  if (mail.length > 0) {
+  const mail = pickMail(process.env);
+
+  if (!mail) {
     console.warn(
-      `[sozlama] Pochta o'chiq — bu o'zgaruvchilar bo'sh: ${mail.join(', ')}. ` +
-        "Tasdiqlash xati, parol tiklash va haftalik hisobot jo'natilmaydi.",
+      "[sozlama] Pochta o'chiq — na BREVO_API_KEY, na SMTP_HOST/USER/PASS qo'yilgan. " +
+        "Tasdiqlash kodi, parol tiklash va haftalik hisobot jo'natilmaydi.",
     );
-  } else {
+  } else if (mail.kind === 'brevo') {
     // Ijobiy qator ham kerak: usiz "sozlangan" bilan "bu tekshiruvi
-    // yo'q eski yig'ma" farq qilmaydi. Shuning uchun bu yerda
-    // console.log ataylab.
+    // yo'q eski yig'ma" farq qilmaydi. Shuning uchun console.log ataylab.
     // eslint-disable-next-line no-console
-    console.log(
-      `[sozlama] Pochta sozlangan: ${process.env.SMTP_HOST}:${process.env.SMTP_PORT ?? 587}`,
+    console.log(`[sozlama] Pochta: Brevo (HTTPS), jo'natuvchi ${mailFromAddress(mail.from) ?? '?'}`);
+  } else {
+    // eslint-disable-next-line no-console
+    console.log(`[sozlama] Pochta: SMTP ${mail.host}:${mail.port}`);
+
+    // Bulutda SMTP portlari deyarli har doim yopiq. Bu aynan bir necha
+    // soat yo'qotishga sabab bo'lgandi: sozlama joyida ko'rinadi,
+    // ulanish esa "Connection timeout" bilan tugaydi.
+    console.warn(
+      '[sozlama] SMTP tanlandi. Bulut serverlarida 465 va 587 portlari ' +
+        "odatda yopiq bo'ladi — jo'natish ishlamasa BREVO_API_KEY qo'ying.",
     );
 
     // Ko'p provayder — jumladan Gmail — faqat autentifikatsiya
-    // qilingan manzildan jo'natishga ruxsat beradi. `MAIL_FROM`
-    // boshqasini ko'rsatsa xat rad etiladi, sozlama esa tashqaridan
-    // joyida ko'rinadi. Shuning uchun bu yerda aytiladi.
-    const from = mailFromAddress(process.env.MAIL_FROM);
-    const user = (process.env.SMTP_USER ?? '').trim().toLowerCase();
+    // qilingan manzildan jo'natishga ruxsat beradi.
+    const from = mailFromAddress(mail.from);
+    const user = mail.user.toLowerCase();
 
-    if (process.env.MAIL_FROM && !from) {
-      console.warn(`[sozlama] MAIL_FROM da manzil topilmadi: ${process.env.MAIL_FROM}`);
-    } else if (from && user && from !== user) {
+    if (!from) {
+      console.warn(`[sozlama] MAIL_FROM da manzil topilmadi: ${mail.from}`);
+    } else if (from !== user) {
       console.warn(
         `[sozlama] MAIL_FROM (${from}) SMTP_USER (${user}) bilan bir xil emas — ` +
           "ko'p provayder bunday xatni rad etadi.",
