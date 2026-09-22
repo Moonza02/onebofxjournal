@@ -26,10 +26,13 @@ export type BrevoAttachment = { name: string; content: string };
 export type BrevoPayload = {
   sender: { name?: string; email: string };
   to: { email: string }[];
+  replyTo?: { email: string };
   subject: string;
   textContent: string;
   htmlContent?: string;
   attachment?: BrevoAttachment[];
+  /** Brevo jurnalida ko'rinadi — qaysi xat qaysi maqsadda ketgani. */
+  tags?: string[];
 };
 
 /** `ONEBO FX <bot@onebofx.uz>` → `{ name, email }`.
@@ -52,9 +55,11 @@ export function brevoPayload(
     subject: string;
     text: string;
     html?: string;
+    tag?: string;
     attachments?: { filename: string; content: Buffer }[];
   },
   from: string,
+  replyTo?: string,
 ): BrevoPayload | null {
   const sender = brevoSender(from);
   if (!sender) return null;
@@ -65,6 +70,11 @@ export function brevoPayload(
     subject: options.subject,
     textContent: options.text,
   };
+
+  const answer = mailFromAddress(replyTo ?? '');
+  if (answer) payload.replyTo = { email: answer };
+
+  if (options.tag) payload.tags = [options.tag];
 
   if (options.html) payload.htmlContent = options.html;
 

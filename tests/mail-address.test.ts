@@ -1,5 +1,25 @@
 import { describe, expect, it } from 'vitest';
-import { mailFromAddress } from '../src/lib/mail-address';
+import { isFreemail, mailFromAddress } from '../src/lib/mail-address';
+
+describe('isFreemail', () => {
+  it('gmail — ha', () => {
+    expect(isFreemail('ONEBO FX <moonzaofficial@gmail.com>')).toBe(true);
+  });
+
+  it('mail.ru — ha', () => {
+    expect(isFreemail('ibrohim@mail.ru')).toBe(true);
+  });
+
+  it("o'z domeni — yo'q", () => {
+    expect(isFreemail('ONEBO FX <no-reply@onebofx.uz>')).toBe(false);
+  });
+
+  it("manzil yo'q — yo'q", () => {
+    expect(isFreemail('ONEBO FX')).toBe(false);
+    expect(isFreemail('')).toBe(false);
+    expect(isFreemail(null)).toBe(false);
+  });
+});
 
 describe('mailFromAddress', () => {
   it('burchakli qavs ichidan oladi', () => {

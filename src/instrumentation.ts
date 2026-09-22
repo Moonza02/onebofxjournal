@@ -9,7 +9,7 @@
  *  `onRequestError` aynan shuning uchun: Next uni har bir server
  *  xatosida chaqiradi va biz matnni Railway log'iga yozamiz.
  */
-import { mailFromAddress } from './lib/mail-address';
+import { isFreemail, mailFromAddress } from './lib/mail-address';
 import { pickMail } from './lib/mail-config';
 
 /** Server ko'tarilganda bir marta ishlaydi.
@@ -36,6 +36,18 @@ export function register(): void {
     // yo'q eski yig'ma" farq qilmaydi. Shuning uchun console.log ataylab.
     // eslint-disable-next-line no-console
     console.log(`[sozlama] Pochta: Brevo (HTTPS), jo'natuvchi ${mailFromAddress(mail.from) ?? '?'}`);
+
+    // Bepul pochtadan jo'natish — xat yetib boradi, lekin ko'pincha
+    // «Spam» ga. Sabab DMARC: `@gmail.com` nomidan boshqa server
+    // jo'nata olmaydi, shuning uchun Brevo `From` ni o'z domeniga
+    // almashtiradi va qabul qiluvchi uchun jo'natuvchi notanish bo'ladi.
+    if (isFreemail(mail.from)) {
+      console.warn(
+        `[sozlama] Jo'natuvchi bepul pochta (${mailFromAddress(mail.from)}). ` +
+          "Brevo `From` ni o'z domeniga almashtiradi va xatlar ko'pincha «Spam» ga tushadi. " +
+          "To'liq yechim — o'z domeni va DKIM.",
+      );
+    }
   } else {
     // eslint-disable-next-line no-console
     console.log(`[sozlama] Pochta: SMTP ${mail.host}:${mail.port}`);

@@ -28,6 +28,7 @@ describe('pickMail', () => {
       user: 'bot@onebofx.uz',
       pass: 'abcdefghijklmnop',
       from: 'ONEBO FX <bot@onebofx.uz>',
+      replyTo: 'bot@onebofx.uz',
     });
   });
 
@@ -48,6 +49,7 @@ describe('pickMail', () => {
       kind: 'brevo',
       apiKey: 'xkeysib-123',
       from: 'ONEBO FX <bot@onebofx.uz>',
+      replyTo: 'bot@onebofx.uz',
     });
   });
 
@@ -60,12 +62,28 @@ describe('pickMail', () => {
       kind: 'brevo',
       apiKey: 'xkeysib-123',
       from: 'ONEBO FX <xat@onebofx.uz>',
+      replyTo: 'xat@onebofx.uz',
     });
   });
 
   it('kalit bor, jo‘natuvchi yo‘q — HTTPS tanlanmaydi', () => {
     // Manzilsiz jo'natib bo'lmaydi, shuning uchun bu sozlama emas.
     expect(pickMail({ BREVO_API_KEY: 'xkeysib-123' })).toBeNull();
+  });
+
+  // Brevo `From` ni o'z domeniga almashtiradi, shuning uchun javob
+  // manzili alohida ko'rsatilishi kerak — aks holda xatga yozilgan
+  // javob hech kimga bormaydi.
+  it('javob manzili jo‘natuvchidan olinadi', () => {
+    expect(pickMail({ ...SMTP, BREVO_API_KEY: 'x' })).toMatchObject({
+      replyTo: 'bot@onebofx.uz',
+    });
+  });
+
+  it('MAIL_REPLY_TO berilsa u ustun', () => {
+    expect(
+      pickMail({ ...SMTP, BREVO_API_KEY: 'x', MAIL_REPLY_TO: 'salom@onebofx.uz' }),
+    ).toMatchObject({ replyTo: 'salom@onebofx.uz' });
   });
 });
 
@@ -122,5 +140,20 @@ describe('brevoPayload', () => {
 
   it('jo‘natuvchi yaroqsiz — null', () => {
     expect(brevoPayload(base, 'ONEBO FX')).toBeNull();
+  });
+
+  it('javob manzili qo‘shiladi', () => {
+    const payload = brevoPayload(base, 'bot@onebofx.uz', 'ONEBO FX <salom@onebofx.uz>');
+    expect(payload?.replyTo).toEqual({ email: 'salom@onebofx.uz' });
+  });
+
+  it('javob manzili yaroqsiz — maydon qo‘shilmaydi', () => {
+    const payload = brevoPayload(base, 'bot@onebofx.uz', 'shunchaki matn');
+    expect(payload).not.toHaveProperty('replyTo');
+  });
+
+  it('belgi jurnalga tushadi', () => {
+    const payload = brevoPayload({ ...base, tag: 'verify' }, 'bot@onebofx.uz');
+    expect(payload?.tags).toEqual(['verify']);
   });
 });

@@ -85,6 +85,7 @@ export async function emailWeeklyReport(
     subject,
     text,
     html,
+    tag: 'report',
     attachments: [
       {
         filename: `onebo-fx-${report.label.replace(/\s|—/g, '')}.pdf`,

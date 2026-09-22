@@ -5,6 +5,8 @@
  *  chaqirish mumkin, va to'liq sinaladi.
  */
 
+import { mailFromAddress } from './mail-address';
+
 export type SmtpConfig = {
   kind: 'smtp';
   host: string;
@@ -13,9 +15,10 @@ export type SmtpConfig = {
   user: string;
   pass: string;
   from: string;
+  replyTo: string;
 };
 
-export type BrevoConfig = { kind: 'brevo'; apiKey: string; from: string };
+export type BrevoConfig = { kind: 'brevo'; apiKey: string; from: string; replyTo: string };
 
 export type MailConfig = SmtpConfig | BrevoConfig;
 
@@ -29,8 +32,14 @@ export function pickMail(env: Record<string, string | undefined>): MailConfig | 
   const user = (env.SMTP_USER ?? '').trim();
   const from = (env.MAIL_FROM ?? '').trim() || (user ? `ONEBO FX <${user}>` : '');
 
+  // Javob manzili. Brevo orqali ketganda `From` ularning o'z domeniga
+  // almashadi (`...@NNNN.brevosend.com`) — ya'ni xatga javob yozgan odam
+  // hech qayerga yetib bormaydi. `Reply-To` shu teshikni yopadi:
+  // javob tirik manzilga tushadi.
+  const replyTo = (env.MAIL_REPLY_TO ?? '').trim() || mailFromAddress(from) || '';
+
   const apiKey = (env.BREVO_API_KEY ?? '').trim();
-  if (apiKey && from) return { kind: 'brevo', apiKey, from };
+  if (apiKey && from) return { kind: 'brevo', apiKey, from, replyTo };
 
   const host = (env.SMTP_HOST ?? '').trim();
   const pass = (env.SMTP_PASS ?? '').trim();
@@ -47,5 +56,6 @@ export function pickMail(env: Record<string, string | undefined>): MailConfig | 
     user,
     pass,
     from,
+    replyTo,
   };
 }

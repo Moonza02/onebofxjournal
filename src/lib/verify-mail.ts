@@ -68,7 +68,7 @@ export async function issueVerification(user: {
   });
 
   const { subject, text, html } = verifyCodeEmail({ code, d });
-  const sent = await sendMail({ to: user.email, subject, text, html });
+  const sent = await sendMail({ to: user.email, subject, text, html, tag: 'verify' });
 
   if (!sent.ok) {
     // Ilgari bu yerda ham `errSmtp` qaytardi — ya'ni "sozlanmagan"

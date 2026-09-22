@@ -84,7 +84,7 @@ export async function requestReset(_prev: ResetState, formData: FormData): Promi
   const userDict = await getDict(user.locale);
   const { subject, text, html } = resetEmail({ url: resetUrl(token, appUrl), d: userDict });
 
-  const sent = await sendMail({ to: email, subject, text, html });
+  const sent = await sendMail({ to: email, subject, text, html, tag: 'reset' });
 
   // Javob o'zgarmaydi: "jo'natildi" deyish shu yerda ataylab, chunki
   // aks holda qaysi manzil ro'yxatda borligi bilinib qoladi. Lekin

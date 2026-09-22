@@ -38,6 +38,8 @@ export async function sendMail(options: {
   subject: string;
   text: string;
   html?: string;
+  /** Provayder jurnalida ko'rinadigan belgi: `verify`, `reset`, … */
+  tag?: string;
   attachments?: Attachment[];
 }): Promise<{ ok: boolean; error?: string }> {
   const config = mailConfig();
@@ -74,6 +76,7 @@ type SendOptions = {
   subject: string;
   text: string;
   html?: string;
+  tag?: string;
   attachments?: Attachment[];
 };
 
@@ -81,7 +84,7 @@ async function sendBrevo(
   config: BrevoConfig,
   options: SendOptions,
 ): Promise<{ ok: boolean; error?: string }> {
-  const payload = brevoPayload(options, config.from);
+  const payload = brevoPayload(options, config.from, config.replyTo);
   if (!payload) return { ok: false, error: `MAIL_FROM da manzil topilmadi: ${config.from}` };
 
   return sendViaBrevo(config.apiKey, payload);
@@ -105,6 +108,7 @@ async function sendSmtp(
 
   await transport.sendMail({
     from: config.from,
+    replyTo: config.replyTo || undefined,
     to: options.to,
     subject: options.subject,
     text: options.text,
