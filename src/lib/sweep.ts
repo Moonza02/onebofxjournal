@@ -2,7 +2,7 @@ import 'server-only';
 import { db } from './db';
 import { deleteUserObjects } from './storage';
 import { logError, pruneErrors } from './log';
-import { DELETION_GRACE_MS } from './verify';
+import { DELETION_GRACE_MS, unverifiedCutoff } from './verify';
 
 /** Muddati kelgan ishlarni tozalash.
  *
@@ -15,6 +15,7 @@ import { DELETION_GRACE_MS } from './verify';
 export type SweepResult = {
   deletedUsers: number;
   deletedDemos: number;
+  deletedUnverified: number;
 };
 
 /** Bir chaqiruvda nechtagacha hisob o'chiriladi.
@@ -103,6 +104,30 @@ export async function sweepExpiredDemos(
   return removeAll(rows ?? [], where, 'sweep.demo', deps);
 }
 
+/** Tasdiqlanmagan hisoblar.
+ *
+ *  Ro'yxatdan o'tgan, lekin manzilini tasdiqlamagan yozuvlar. Ular
+ *  ishlamaydi — kirib ham bo'lmaydi — lekin manzilni band qilib
+ *  turadi. Muddat o'tgach o'chadi va manzil bo'shaydi.
+ *
+ *  Namuna hisoblar bu yerga tushmaydi: ularning manzili o'ylab
+ *  topilgan va ular hech qachon tasdiqlanmaydi. Ular o'z muddati
+ *  bo'yicha `sweepExpiredDemos` da ketadi.
+ */
+export async function sweepUnverified(
+  now: Date = new Date(),
+  deps: SweepDeps = liveDeps,
+): Promise<number> {
+  const where = {
+    emailVerifiedAt: null,
+    isDemo: false,
+    createdAt: { lt: unverifiedCutoff(now) },
+  };
+  const rows = await deps.findUsers(where, SWEEP_BATCH);
+
+  return removeAll(rows ?? [], where, 'sweep.unverified', deps);
+}
+
 /** Muddati o'tgan tasdiqlash va tiklash kalitlarini tozalash.
  *
  *  Kalitlar o'zi yaroqsiz bo'lib qoladi, lekin jadval cheksiz
@@ -118,9 +143,10 @@ export async function pruneTokens(now: Date = new Date()): Promise<void> {
 export async function runSweep(now: Date = new Date()): Promise<SweepResult> {
   const deletedUsers = await sweepDeletedUsers(now);
   const deletedDemos = await sweepExpiredDemos(now);
+  const deletedUnverified = await sweepUnverified(now);
 
   await pruneTokens(now);
   await pruneErrors();
 
-  return { deletedUsers, deletedDemos };
+  return { deletedUsers, deletedDemos, deletedUnverified };
 }

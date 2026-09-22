@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { db, type Tx } from '@/lib/db';
 import { siteUrl } from '@/lib/site';
+import { logError } from '@/lib/log';
 import { createSession } from '@/lib/session';
 import { clientKey, rateLimit } from '@/lib/ratelimit';
 import { getDict } from '@/lib/i18n/server';
@@ -83,7 +84,15 @@ export async function requestReset(_prev: ResetState, formData: FormData): Promi
   const userDict = await getDict(user.locale);
   const { subject, text, html } = resetEmail({ url: resetUrl(token, appUrl), d: userDict });
 
-  await sendMail({ to: email, subject, text, html });
+  const sent = await sendMail({ to: email, subject, text, html });
+
+  // Javob o'zgarmaydi: "jo'natildi" deyish shu yerda ataylab, chunki
+  // aks holda qaysi manzil ro'yxatda borligi bilinib qoladi. Lekin
+  // xato log'ga tushishi shart — bo'lmasa xat jo'natilmayotganini
+  // hech kim bilmaydi.
+  if (!sent.ok) {
+    await logError('reset.send', new Error(sent.error ?? 'nomalum'), { userId: user.id });
+  }
 
   return { sent: true };
 }

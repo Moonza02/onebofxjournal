@@ -1,4 +1,4 @@
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 
 /** Parolni tiklash kalitlari.
  *
@@ -26,6 +26,30 @@ export function newToken(): string {
 
 export function hashToken(token: string): string {
   return createHash('sha256').update(token, 'utf8').digest('hex');
+}
+
+/** Pochtani tasdiqlash kodi — olti xona.
+ *
+ *  Havoladan farqi: odam uni ko'chirib yozadi, shuning uchun qisqa
+ *  bo'lishi shart. Qisqaligi esa taxmin qilinishi mumkinligini
+ *  bildiradi — shuning uchun muddati qisqa va urinishlar sanaladi
+ *  (qarang `verify.ts`).
+ *
+ *  `randomInt` — kriptografik tasodif; `Math.random()` bu yerda
+ *  yaramaydi, uning ketma-ketligini oldindan hisoblash mumkin.
+ */
+export function newCode(): string {
+  return String(randomInt(0, 1_000_000)).padStart(6, '0');
+}
+
+/** Kod xeshi foydalanuvchi bilan tuzlanadi.
+ *
+ *  Tuzsiz qilinsa, bir vaqtda ikki odamga bir xil kod tushganda
+ *  xeshlari ham bir xil bo'lardi — va birining kodi ikkinchisining
+ *  hisobini ochishi mumkin edi.
+ */
+export function hashCode(userId: string, code: string): string {
+  return createHash('sha256').update(`${userId}:${code}`, 'utf8').digest('hex');
 }
 
 /** Xeshlarni vaqt bo'yicha teng solishtirish. */

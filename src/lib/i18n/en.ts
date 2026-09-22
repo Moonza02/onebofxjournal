@@ -1699,35 +1699,41 @@ export const en: Dict = {
     title: 'Email verification',
 
     bannerTitle: 'Verify your email',
-    bannerBody:
-      'A link was sent to your address when you signed up. If it did not arrive, send it again. Until it is verified the weekly report is not emailed; everything else works.',
-    bannerCta: 'Send the link again',
+    bannerBody: 'Your address is not verified yet. Request a new code and confirm it.',
+    bannerCta: 'Send the code again',
     bannerSending: 'Sending…',
     bannerSent: 'Sent. Check your inbox — and the spam folder.',
 
-    okTitle: 'Email verified',
-    okBody: 'Thanks. Reports and notifications will now go to this address.',
-    okCta: 'Go to the panel',
+    sentTitle: 'Check your email',
+    sentBody:
+      'A six-digit code has been sent to {email}. Enter it below — your account opens after that. If it has not arrived, check the spam folder.',
+    sentBodyNoEmail:
+      'A six-digit code has been sent to your address. Enter it below — your account opens after that. If it has not arrived, check the spam folder.',
 
-    failTitle: 'The link did not work',
-    failBody: 'The link has expired or was already used. Request a new one from the panel.',
-    failCta: 'Go to the panel',
+    codeLabel: 'Code from the email',
+    codeSubmit: 'Verify',
+    codeChecking: 'Checking…',
+    noCode: 'No code?',
 
-    alreadyTitle: 'Already verified',
+    loginCta: 'Go to sign in',
+    failTitle: 'Verification not started',
     alreadyBody: 'This address is verified — there is nothing else to do.',
 
-    needVerified: 'This needs a verified email address. Use the link in the panel.',
+    needVerified: 'This needs a verified email address.',
 
     errTooMany: 'Too many attempts. Try again in an hour.',
-    errAppUrl: 'The app URL (APP_URL) is not configured. Please contact the administrator.',
+    errExpired: 'This request has expired. Try to sign in — you can request a code there.',
+    errCodeShape: 'The code is six digits.',
+    errCodeWrong: 'That code is wrong. {left} attempts left.',
+    errCodeGone: 'The code has expired or was entered wrong too many times. Request a new one.',
     errSmtp: 'Email is not configured. Please contact the administrator.',
+    errSend:
+      'The email could not be sent. Try again shortly; if it keeps failing, contact the administrator.',
 
-    mailSubject: 'ONEBO FX — verify your email',
-    mailBody:
-      'Thanks for signing up to ONEBO FX. Press the button below to verify your address.',
-    mailButton: 'Verify address',
+    mailSubject: 'ONEBO FX — verification code',
+    mailBody: 'Thanks for signing up to ONEBO FX. Your verification code is:',
     mailIgnore:
-      'If you did not sign up, simply ignore this email. The link is valid for 24 hours.',
+      'If you did not sign up, ignore this email. The code is valid for {minutes} minutes.',
   },
 
   deletion: {

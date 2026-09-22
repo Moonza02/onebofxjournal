@@ -1708,37 +1708,43 @@ export const uz = {
     title: 'Pochtani tasdiqlash',
 
     bannerTitle: 'Pochtangizni tasdiqlang',
-    bannerBody:
-      'Ro‘yxatdan o‘tganingizda manzilingizga havola jo‘natilgan. Xat kelmagan bo‘lsa — qayta yuboring. Tasdiqlamaguningizcha haftalik hisobot pochtaga jo‘natilmaydi, qolgan hammasi ishlayveradi.',
-    bannerCta: 'Havolani qayta yuborish',
+    bannerBody: 'Manzilingiz hali tasdiqlanmagan. Kodni qayta so‘rab, tasdiqlab qo‘ying.',
+    bannerCta: 'Kodni qayta yuborish',
     bannerSending: 'Yuborilmoqda…',
     bannerSent: 'Yuborildi. Pochtangizni tekshiring — «Spam» papkasini ham.',
 
-    okTitle: 'Pochta tasdiqlandi',
-    okBody: 'Rahmat. Endi hisobot va bildirishnomalar shu manzilga boradi.',
-    okCta: 'Panelga o‘tish',
+    sentTitle: 'Pochtangizni tekshiring',
+    sentBody:
+      '{email} manziliga olti xonali kod jo‘natildi. Uni quyiga kiriting — hisobingiz shundan keyin ochiladi. Xat ko‘rinmasa «Spam» papkasini ham qarang.',
+    sentBodyNoEmail:
+      'Manzilingizga olti xonali kod jo‘natildi. Uni quyiga kiriting — hisobingiz shundan keyin ochiladi. Xat ko‘rinmasa «Spam» papkasini ham qarang.',
 
-    failTitle: 'Havola ishlamadi',
-    failBody:
-      'Havolaning muddati o‘tgan yoki u allaqachon ishlatilgan. Paneldan yangisini so‘rang.',
-    failCta: 'Panelga o‘tish',
+    codeLabel: 'Pochtadagi kod',
+    codeSubmit: 'Tasdiqlash',
+    codeChecking: 'Tekshirilmoqda…',
+    noCode: 'Kod kelmadimi?',
 
-    alreadyTitle: 'Allaqachon tasdiqlangan',
+    loginCta: 'Kirish sahifasiga',
+    failTitle: 'Tasdiqlash boshlanmagan',
     alreadyBody: 'Bu manzil tasdiqlangan — boshqa hech narsa qilish shart emas.',
 
-    needVerified:
-      'Buning uchun pochta manzilingiz tasdiqlangan bo‘lishi kerak. Paneldagi havolani bosing.',
+    needVerified: 'Buning uchun pochta manzilingiz tasdiqlangan bo‘lishi kerak.',
 
     errTooMany: 'Juda ko‘p urinish. Bir soatdan keyin qayta urinib ko‘ring.',
-    errAppUrl: 'Ilova manzili (APP_URL) sozlanmagan. Administratorga murojaat qiling.',
+    errExpired:
+      'So‘rov eskirgan. Kirishga urinib ko‘ring — kod o‘sha yerdan qayta so‘raladi.',
+    errCodeShape: 'Kod olti xonali raqamdan iborat.',
+    errCodeWrong: 'Kod noto‘g‘ri. Yana {left} urinish qoldi.',
+    errCodeGone:
+      'Kodning muddati o‘tgan yoki u juda ko‘p marta xato kiritilgan. Yangisini so‘rang.',
     errSmtp: 'Pochta xizmati sozlanmagan. Administratorga murojaat qiling.',
+    errSend:
+      'Xat jo‘natilmadi. Birozdan keyin qayta urinib ko‘ring; takrorlansa administratorga ayting.',
 
-    mailSubject: 'ONEBO FX — pochtangizni tasdiqlang',
-    mailBody:
-      'ONEBO FX da ro‘yxatdan o‘tganingiz uchun rahmat. Manzilingizni tasdiqlash uchun quyidagi tugmani bosing.',
-    mailButton: 'Manzilni tasdiqlash',
+    mailSubject: 'ONEBO FX — tasdiqlash kodi',
+    mailBody: 'ONEBO FX da ro‘yxatdan o‘tganingiz uchun rahmat. Tasdiqlash kodingiz:',
     mailIgnore:
-      'Agar siz ro‘yxatdan o‘tmagan bo‘lsangiz, bu xatga e’tibor bermang. Havola 24 soat amal qiladi.',
+      'Agar siz ro‘yxatdan o‘tmagan bo‘lsangiz, bu xatga e’tibor bermang. Kod {minutes} daqiqa amal qiladi.',
   },
 
   deletion: {

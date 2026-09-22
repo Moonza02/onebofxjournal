@@ -5,21 +5,30 @@ import {
   deletionDue,
   deletionDueAt,
   needsVerification,
+  UNVERIFIED_TTL_DAYS,
+  UNVERIFIED_TTL_MS,
+  unverifiedCutoff,
   VERIFY_TTL_MS,
   verificationUsable,
   verifyExpiry,
-  verifyUrl,
+  cleanCode,
+  looksLikeCode,
+  MAX_CODE_ATTEMPTS,
 } from '@/lib/verify';
 
 const NOW = new Date(2026, 8, 20, 12, 0, 0);
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
 
-function row(over: Partial<{ email: string; expiresAt: Date; usedAt: Date | null }> = {}) {
+function row(
+  over: Partial<{ email: string; expiresAt: Date; usedAt: Date | null; attempts: number }> = {},
+) {
   return {
     email: 'ibrohim@example.com',
-    expiresAt: new Date(NOW.getTime() + HOUR),
+    // Kod 15 daqiqa yashaydi, shuning uchun sinovda ham shundan ichkari.
+    expiresAt: new Date(NOW.getTime() + 5 * 60 * 1000),
     usedAt: null,
+    attempts: 0,
     ...over,
   };
 }
@@ -27,23 +36,10 @@ function row(over: Partial<{ email: string; expiresAt: Date; usedAt: Date | null
 /* ------------------------------------------------------------ tasdiqlash */
 
 describe('verifyExpiry', () => {
-  it('sutkalik muddat beradi', () => {
-    expect(verifyExpiry(NOW).getTime() - NOW.getTime()).toBe(VERIFY_TTL_MS);
-    expect(VERIFY_TTL_MS).toBe(DAY);
-  });
-});
-
-describe('verifyUrl', () => {
-  it('to‘liq havola tuzadi', () => {
-    expect(verifyUrl('abc', 'https://onebo.uz')).toBe('https://onebo.uz/tasdiqlash/abc');
-  });
-
-  it('oxiridagi chiziqchani takrorlamaydi', () => {
-    expect(verifyUrl('abc', 'https://onebo.uz/')).toBe('https://onebo.uz/tasdiqlash/abc');
-  });
-
-  it('manzil berilmasa nisbiy yo‘l', () => {
-    expect(verifyUrl('abc', undefined)).toBe('/tasdiqlash/abc');
+  it('o‘n besh daqiqalik muddat beradi', () => {
+    // Kod olti xonali, ya'ni taxmin qilinishi mumkin — muddat qisqa.
+    expect(verifyExpiry(NOW).getTime()).toBe(NOW.getTime() + 15 * 60 * 1000);
+    expect(VERIFY_TTL_MS).toBe(15 * 60 * 1000);
   });
 });
 
@@ -73,6 +69,43 @@ describe('verificationUsable', () => {
 
   it('manzil katta-kichik harfda farq qilmaydi', () => {
     expect(verificationUsable(row(), 'Ibrohim@Example.com', NOW)).toBe(true);
+  });
+
+  it('urinishlar tugagan kod ishlamaydi', () => {
+    // Asosiy himoya: olti xonali kodni taxmin qilib bo'lmasin.
+    const burned = row({ attempts: MAX_CODE_ATTEMPTS });
+    expect(verificationUsable(burned, 'ibrohim@example.com', NOW)).toBe(false);
+  });
+
+  it('oxirgi urinish hali ishlaydi', () => {
+    const last = row({ attempts: MAX_CODE_ATTEMPTS - 1 });
+    expect(verificationUsable(last, 'ibrohim@example.com', NOW)).toBe(true);
+  });
+});
+
+describe('looksLikeCode', () => {
+  it('olti xonali raqam', () => {
+    expect(looksLikeCode('000000')).toBe(true);
+    expect(looksLikeCode('931204')).toBe(true);
+  });
+
+  it('boshqasi emas', () => {
+    expect(looksLikeCode('12345')).toBe(false);
+    expect(looksLikeCode('1234567')).toBe(false);
+    expect(looksLikeCode('12a456')).toBe(false);
+    expect(looksLikeCode('')).toBe(false);
+  });
+});
+
+describe('cleanCode', () => {
+  it('pochtadan nusxa olinganda qo‘shilib keladigan narsalarni tozalaydi', () => {
+    expect(cleanCode(' 931 204 ')).toBe('931204');
+    expect(cleanCode('931-204')).toBe('931204');
+    expect(cleanCode('kod: 931204')).toBe('931204');
+  });
+
+  it('ortiqchasini kesadi', () => {
+    expect(cleanCode('9312049999')).toBe('931204');
   });
 });
 
@@ -139,5 +172,19 @@ describe('deletionDue', () => {
   it('bir kun oldin ham — yo‘q', () => {
     const justBefore = new Date(NOW.getTime() + 30 * DAY - 1);
     expect(deletionDue(NOW, justBefore)).toBe(false);
+  });
+});
+
+describe('unverifiedCutoff', () => {
+  const NOW = new Date(2026, 8, 20, 12, 0, 0);
+
+  it('bir hafta oldingi vaqtni qaytaradi', () => {
+    expect(unverifiedCutoff(NOW).getTime()).toBe(NOW.getTime() - UNVERIFIED_TTL_MS);
+    expect(UNVERIFIED_TTL_DAYS).toBe(7);
+  });
+
+  it('chegara tasdiqlash havolasining muddatidan uzun', () => {
+    // Aks holda havola hali amal qilib turganda hisob o'chib ketardi.
+    expect(UNVERIFIED_TTL_MS).toBeGreaterThan(VERIFY_TTL_MS);
   });
 });

@@ -10,31 +10,61 @@
 
 /* ------------------------------------------------------- tasdiqlash */
 
-/** Tasdiqlash havolasi shuncha vaqt amal qiladi.
+/** Kod shuncha vaqt amal qiladi.
  *
- *  Parol tiklashdan uzunroq: bu havola shoshilinch emas, odam
- *  pochtasini ertasiga ochishi mumkin.
+ *  Havoladan ancha qisqa va bu ataylab: kod olti xonali, ya'ni
+ *  taxmin qilinishi mumkin. Muddat qanchalik qisqa bo'lsa, taxmin
+ *  qilishga shuncha kam vaqt qoladi. O'n besh daqiqa — pochtani
+ *  ochib, kodni ko'chirishga yetarli.
  */
-export const VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
+export const VERIFY_TTL_MS = 15 * 60 * 1000;
 
-/** Bir foydalanuvchi uchun bir vaqtda ochiq turadigan kalitlar soni. */
+/** Xat matnida daqiqada aytiladi — matn bilan qiymat bir joyda
+ *  turishi uchun shu yerdan olinadi. */
+export const VERIFY_TTL_MINUTES = VERIFY_TTL_MS / 60_000;
+
+/** Kod uzunligi — faqat raqam. */
+export const CODE_LENGTH = 6;
+
+/** Bitta kod bo'yicha nechta noto'g'ri urinishga yo'l qo'yiladi.
+ *
+ *  Million variantdan beshtasini sinash — yo'q narsa. Chegaraga
+ *  yetgan kod kuchini yo'qotadi va yangisini so'rash kerak bo'ladi.
+ */
+export const MAX_CODE_ATTEMPTS = 5;
+
+/** Bir foydalanuvchi uchun bir vaqtda ochiq turadigan kodlar soni. */
 export const MAX_OPEN_VERIFICATIONS = 3;
 
 export function verifyExpiry(now: Date = new Date()): Date {
   return new Date(now.getTime() + VERIFY_TTL_MS);
 }
 
-export function verifyUrl(token: string, appUrl: string | undefined): string {
-  const base = (appUrl || '').replace(/\/+$/, '');
-  return `${base}/tasdiqlash/${token}`;
+/** Shakli to'g'rimi — bazaga bormasdan oldin. */
+export function looksLikeCode(value: string): boolean {
+  return new RegExp(`^\\d{${CODE_LENGTH}}$`).test(value);
 }
 
-export type VerificationRow = { email: string; expiresAt: Date; usedAt: Date | null };
-
-/** Kalit hozir ishlaydimi.
+/** Odam kiritgan kodni tozalash.
  *
- *  Manzil ham solishtiriladi: kalit berilgandan keyin foydalanuvchi
- *  manzilini o'zgartirgan bo'lsa, eski kalit yangisini tasdiqlamaydi.
+ *  Pochtadan ko'chirganda bo'shliq, chiziqcha va ko'rinmas belgilar
+ *  qo'shilib keladi. Buning uchun odamni qiynash shart emas.
+ */
+export function cleanCode(value: string): string {
+  return (value ?? '').replace(/\D/g, '').slice(0, CODE_LENGTH);
+}
+
+export type VerificationRow = {
+  email: string;
+  expiresAt: Date;
+  usedAt: Date | null;
+  attempts: number;
+};
+
+/** Kod hozir ishlaydimi.
+ *
+ *  Manzil ham solishtiriladi: kod berilgandan keyin foydalanuvchi
+ *  manzilini o'zgartirgan bo'lsa, eski kod yangisini tasdiqlamaydi.
  */
 export function verificationUsable(
   row: VerificationRow | null,
@@ -43,21 +73,40 @@ export function verificationUsable(
 ): boolean {
   if (!row) return false;
   if (row.usedAt) return false;
+  if (row.attempts >= MAX_CODE_ATTEMPTS) return false;
   if (row.expiresAt.getTime() <= now.getTime()) return false;
   return row.email.toLowerCase() === currentEmail.toLowerCase();
 }
 
 /** Tasdiqlanmagan hisob qaysi ishlarni qila olmaydi.
  *
- *  Ro'yxatda bitta amal bor va u tasodifiy emas: haftalik hisobot
- *  **istalgan manzilga** PDF jo'natadi. Tasdiqlanmagan hisob bilan bu
- *  begona odamga xat yuborish vositasiga aylanadi.
+ *  Endi bu ro'yxat ikkinchi qator himoya: tasdiqlanmagan hisob bilan
+ *  ichkariga umuman kirib bo'lmaydi (qarang `actions/auth.ts`). Lekin
+ *  ro'yxat qoldirildi — chegara bitta joyda turgani xavfli, va bu
+ *  o'zgarishdan oldin ochilgan hisoblar hali tasdiqlanmagan bo'lishi
+ *  mumkin.
  *
- *  Boshqa hech narsa to'sib qo'yilmaydi. Mentor taklifi ham shu
- *  ro'yxatda emas: u kod beradi, xat jo'natmaydi — odam kodni o'zi
- *  uzatadi. Jurnal yuritish tasdiqlashni kutib turmaydi.
+ *  Ro'yxatdagi amal tasodifiy emas: haftalik hisobot **istalgan
+ *  manzilga** PDF jo'natadi.
  */
 export const VERIFIED_ONLY = ['weeklyReport'] as const;
+
+/* --------------------------------------- tasdiqlanmagan hisoblar */
+
+/** Tasdiqlanmagan hisob shuncha kun kutadi, keyin o'chiriladi.
+ *
+ *  Ikki sabab bor. Birinchisi — soxta manzillar bazada to'planib
+ *  qolmasligi. Ikkinchisi muhimroq: kimdir boshqaning manzili bilan
+ *  ro'yxatdan o'tsa, haqiqiy egasi kelganda manzil band chiqadi.
+ *  Muddat o'tgach yozuv ketadi va manzil yana bo'shaydi.
+ */
+export const UNVERIFIED_TTL_DAYS = 7;
+export const UNVERIFIED_TTL_MS = UNVERIFIED_TTL_DAYS * 24 * 60 * 60 * 1000;
+
+/** Shu vaqtdan oldin ochilgan va hali tasdiqlanmagan hisoblar o'chadi. */
+export function unverifiedCutoff(now: Date = new Date()): Date {
+  return new Date(now.getTime() - UNVERIFIED_TTL_MS);
+}
 export type VerifiedOnly = (typeof VERIFIED_ONLY)[number];
 
 export function needsVerification(

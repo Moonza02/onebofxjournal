@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { getUser } from '@/lib/session';
 import AuthShell from '@/components/auth/AuthShell';
 import LoginForm from '@/components/auth/LoginForm';
+import DemoRow from '@/components/auth/DemoRow';
 import { Icon } from '@/components/ui/icons';
 import { getI18n } from '@/lib/i18n/server';
 import { fill } from '@/lib/i18n';
@@ -36,6 +37,7 @@ export default async function LoginPage({
       ) : null}
 
       <LoginForm />
+      <DemoRow />
     </AuthShell>
   );
 }

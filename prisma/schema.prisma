@@ -163,12 +163,19 @@ model EmailVerification {
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   email     String
-  tokenHash String    @unique
+  // Olti xonali kodning xeshi. Xesh foydalanuvchi bilan tuzlanadi
+  // (`userId:kod`), shuning uchun ikki odamga bir xil kod tushsa ham
+  // xeshlari boshqacha bo'ladi — shu sababli bu ustun `@unique` emas.
+  tokenHash String
+  // Noto'g'ri urinishlar soni. Kod olti xonali, ya'ni taxmin qilish
+  // mumkin — chegara bo'lmasa million urinishda topiladi.
+  attempts  Int       @default(0)
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime  @default(now())
 
   @@index([userId])
+  @@index([userId, usedAt])
   @@index([expiresAt])
 }
 

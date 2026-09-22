@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { SWEEP_BATCH, sweepDeletedUsers, sweepExpiredDemos, type SweepDeps } from '@/lib/sweep';
-import { DELETION_GRACE_MS } from '@/lib/verify';
+import {
+  SWEEP_BATCH,
+  sweepDeletedUsers,
+  sweepExpiredDemos,
+  sweepUnverified,
+  type SweepDeps,
+} from '@/lib/sweep';
+import { DELETION_GRACE_MS, UNVERIFIED_TTL_MS } from '@/lib/verify';
 
 const NOW = new Date(2026, 8, 20, 12, 0, 0);
 
@@ -160,5 +166,42 @@ describe('xavfsizlik', () => {
     const where = d.calls[0].where as { deletionRequestedAt: { lte: Date } };
     // Bugun so'ragan odam bugun o'chib ketmasligi kerak.
     expect(where.deletionRequestedAt.lte.getTime()).toBeLessThan(NOW.getTime());
+  });
+});
+
+describe('sweepUnverified', () => {
+  it('tasdiqlanmaganlarni o‘chiradi', async () => {
+    const d = deps([{ id: 'a' }, { id: 'b' }]);
+    const count = await sweepUnverified(NOW, d.fake);
+
+    expect(count).toBe(2);
+    expect(d.deletedUsers).toEqual(['a', 'b']);
+  });
+
+  it('7 kunlik chegarani va faqat tasdiqlanmaganlarni so‘raydi', async () => {
+    const d = deps([]);
+    await sweepUnverified(NOW, d.fake);
+
+    const where = d.calls[0].where as {
+      emailVerifiedAt: null;
+      isDemo: boolean;
+      createdAt: { lt: Date };
+    };
+
+    expect(where.emailVerifiedAt).toBeNull();
+    expect(where.createdAt.lt.getTime()).toBe(NOW.getTime() - UNVERIFIED_TTL_MS);
+    // Namuna hisoblar bu yerga tushmasligi kerak: ularning manzili
+    // o'ylab topilgan va hech qachon tasdiqlanmaydi.
+    expect(where.isDemo).toBe(false);
+  });
+
+  it('o‘chirish paytida tasdiqlangan bo‘lsa — tegilmaydi', async () => {
+    // Shart qayta qo'yiladi: ro'yxat tuzilgandan keyin odam havolani
+    // bosgan bo'lishi mumkin.
+    const d = deps([{ id: 'a' }, { id: 'b' }], [], ['a']);
+    const count = await sweepUnverified(NOW, d.fake);
+
+    expect(count).toBe(1);
+    expect(d.deletedUsers).toEqual(['b']);
   });
 });

@@ -165,7 +165,8 @@ async function notifyDeletion(user: { id: string; email: string; locale: string 
       d: dict,
     });
 
-    await sendMail({ to: user.email, subject, text, html });
+    const sent = await sendMail({ to: user.email, subject, text, html });
+    if (!sent.ok) throw new Error(sent.error ?? 'nomalum');
   } catch (error) {
     await logError('delete.notify', error, { userId: user.id });
   }

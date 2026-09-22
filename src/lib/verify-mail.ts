@@ -1,11 +1,11 @@
 import 'server-only';
 import { db, type Tx } from './db';
 import { getDict } from './i18n/server';
-import { isMailConfigured, sendMail, verifyEmail } from './mail';
-import { hashToken, newToken } from './reset';
-import { siteUrl } from './site';
-import { MAX_OPEN_VERIFICATIONS, verifyExpiry, verifyUrl } from './verify';
+import { isMailConfigured, sendMail, verifyCodeEmail } from './mail';
+import { hashCode, newCode } from './reset';
+import { MAX_OPEN_VERIFICATIONS, verifyExpiry } from './verify';
 import { rateLimit } from './ratelimit';
+import { logError } from './log';
 
 /** Tasdiqlash xatini yaratib jo'natish.
  *
@@ -30,10 +30,8 @@ export async function issueVerification(user: {
 
   if (!isMailConfigured()) return { ok: false, error: d.verify.errSmtp };
 
-  const appUrl = siteUrl();
-  // Sabab boshqa — xabar ham boshqa bo'lsin, aks holda sozlagan odam
-  // SMTP ni qayta-qayta tekshirib vaqt yo'qotadi.
-  if (!appUrl) return { ok: false, error: d.verify.errAppUrl };
+  // `APP_URL` bu yerda kerak emas: xatda havola emas, kod ketadi.
+  // Bitta sozlama kamaydi — bitta nosozlik manbayi ham.
 
   // Manzil bo'yicha chegara: ro'yxatdan o'tish IP bo'yicha cheklangan,
   // lekin bir odamni xat bilan ko'mish uchun IP almashtirish yetarli
@@ -41,7 +39,7 @@ export async function issueVerification(user: {
   const byEmail = await rateLimit(`verify-mail:${user.email.toLowerCase()}`, 5, 60 * 60 * 1000);
   if (!byEmail.allowed) return { ok: false, error: d.verify.errTooMany };
 
-  const token = newToken();
+  const code = newCode();
 
   await db.$transaction(async (tx: Tx) => {
     // Ochiq kalitlar ko'payib ketmasin — har biri alohida yo'l.
@@ -63,16 +61,25 @@ export async function issueVerification(user: {
       data: {
         userId: user.id,
         email: user.email,
-        tokenHash: hashToken(token),
+        tokenHash: hashCode(user.id, code),
         expiresAt: verifyExpiry(),
       },
     });
   });
 
-  const { subject, text, html } = verifyEmail({ url: verifyUrl(token, appUrl), d });
+  const { subject, text, html } = verifyCodeEmail({ code, d });
   const sent = await sendMail({ to: user.email, subject, text, html });
 
-  if (!sent.ok) return { ok: false, error: d.verify.errSmtp };
+  if (!sent.ok) {
+    // Ilgari bu yerda ham `errSmtp` qaytardi — ya'ni "sozlanmagan"
+    // degan xabar. Sozlamasi joyida, lekin provayder xatni rad etgan
+    // holatda bu xabar noto'g'ri yo'lga boshlaydi: odam SMTP ni
+    // qayta-qayta tekshiradi, sabab esa butunlay boshqa yerda
+    // (masalan `MAIL_FROM` autentifikatsiya qilingan manzil emas).
+    await logError('verify.send', new Error(sent.error ?? 'nomalum'), { userId: user.id });
+    return { ok: false, error: d.verify.errSend };
+  }
+
   return { ok: true };
 }
 

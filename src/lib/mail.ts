@@ -1,5 +1,6 @@
 import 'server-only';
 import { fill, type Dict } from './i18n';
+import { VERIFY_TTL_MINUTES } from './verify';
 import nodemailer from 'nodemailer';
 
 /** Pochta jo'natish.
@@ -78,9 +79,19 @@ export async function sendMail(options: {
 
     return { ok: true };
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : 'Pochta jo‘natilmadi.' };
+    const message = error instanceof Error ? error.message : 'Pochta jo‘natilmadi.';
+
+    // Server log'iga **har doim** yoziladi, chaqiruvchi nima qilishidan
+    // qat'i nazar. Bu qator bo'lmagani qimmatga tushdi: jo'natish rad
+    // etilgan, foydalanuvchiga esa "sozlanmagan" deb ko'rsatilgan va
+    // haqiqiy sabab hech qayerda qolmagan.
+    console.error(`[mail] jo‘natilmadi (${options.to.split('@')[1] ?? '?'}): ${message}`);
+
+    return { ok: false, error: message };
   }
 }
+
+export { mailFromAddress } from './mail-address';
 
 /** Hisobot xatining matni — PDF ilova sifatida ketadi, matn qisqa qoladi. */
 export function reportEmail(options: {
@@ -178,16 +189,41 @@ export function resetEmail(options: { url: string; d: Dict }) {
 }
 
 /** Manzilni tasdiqlash xati. */
-export function verifyEmail(options: { url: string; d: Dict }) {
-  const { d, url } = options;
-  return linkEmail({
-    url,
-    kicker: d.verify.title,
-    body: d.verify.mailBody,
-    button: d.verify.mailButton,
-    footer: d.verify.mailIgnore,
-    subject: d.verify.mailSubject,
-  });
+/** Tasdiqlash kodi bilan xat.
+ *
+ *  Havola emas, kod — ataylab. Havolani pochta xizmatlari bot bilan
+ *  oldindan ochib ko'radi va u ishlatilgan bo'lib qoladi; kod bilan
+ *  bunday bo'lmaydi. Ustiga-ustak kod odam saytdan chiqmasdan
+ *  tasdiqlashiga imkon beradi — brauzer almashtirish shart emas.
+ */
+export function verifyCodeEmail(options: { code: string; d: Dict }): {
+  subject: string;
+  text: string;
+  html: string;
+} {
+  const { code, d } = options;
+  const body = d.verify.mailBody;
+  const footer = fill(d.verify.mailIgnore, { minutes: VERIFY_TTL_MINUTES });
+
+  const text = [body, '', code, '', footer].join('\n');
+
+  const html = `<!doctype html><html><body style="margin:0;background:#F4F6FA;padding:28px 16px;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
+<table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background:#FFFFFF;border-radius:14px;overflow:hidden;border:1px solid #E3E7EE">
+<tr><td style="background:#3B81FC;padding:20px 24px;color:#FFFFFF">
+<div style="font-size:17px;font-weight:700;letter-spacing:.2px">ONEBO FX</div>
+<div style="font-size:12px;color:#DCE8FF;margin-top:3px">${escapeHtml(d.verify.title)}</div>
+</td></tr>
+<tr><td style="padding:22px 24px;color:#111826;font-size:14px;line-height:1.6">
+<p style="margin:0 0 18px">${escapeHtml(body)}</p>
+<p style="margin:0 0 18px;text-align:center">
+<span style="display:inline-block;background:#F4F6FA;border:1px solid #E3E7EE;border-radius:12px;padding:14px 26px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:30px;font-weight:700;letter-spacing:8px;color:#111826">${escapeHtml(code)}</span>
+</p>
+<p style="margin:0;color:#6B7687;font-size:12px">${escapeHtml(footer)}</p>
+</td></tr>
+</table></td></tr></table></body></html>`;
+
+  return { subject: d.verify.mailSubject, text, html };
 }
 
 /** Hisobni o'chirish so'ralgani haqida xabar.
