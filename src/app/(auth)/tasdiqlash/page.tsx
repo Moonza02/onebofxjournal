@@ -14,17 +14,26 @@ export const dynamic = 'force-dynamic';
 
 /** Pochtaga kelgan kodni kiritish sahifasi.
  *
- *  Ikki yo'ldan kelinadi: endigina ro'yxatdan o'tilgan, yoki
- *  tasdiqlanmagan hisob bilan kirishga urinilgan. Ikkalasida ham
- *  odam ichkarida emas, shuning uchun sahifa kirish qobig'ida
- *  turadi.
+ *  Uch yo'ldan kelinadi: endigina ro'yxatdan o'tilgan; tasdiqlanmagan
+ *  hisob bilan kirishga urinilgan; yoki hisob bu oqim joriy
+ *  qilinishidan **oldin** ochilgan va egasi hali ichkarida.
+ *
+ *  Uchinchisi boshida e'tibordan chetda qolgandi: kirgan odam
+ *  panelga qaytarilardi, ya'ni kodni kiritadigan joy yo'q edi —
+ *  lentada "qayta yuborish" tugmasi bor, kod kelardi, lekin uni
+ *  hech qayerga yozib bo'lmasdi.
  */
 export default async function VerifyPendingPage() {
-  // Allaqachon kirgan odamning bu yerda ishi yo'q.
-  if (await getUser()) redirect('/panel');
+  const user = await getUser();
+
+  // Tasdiqlangan odamning bu yerda ishi yo'q.
+  if (user?.emailVerifiedAt) redirect('/panel');
 
   const { d } = await getI18n();
-  const id = await getPending();
+
+  // Kirgan, lekin tasdiqlanmagan bo'lsa — kimligi sessiyadan ma'lum.
+  // Aks holda ro'yxatdan o'tishda qoldirilgan belgidan.
+  const id = user?.id ?? (await getPending());
 
   // Belgi yo'q — ya'ni bu sahifaga tasodifan kelingan yoki yarim
   // soatdan ko'p vaqt o'tgan. Bunday holda kirish sahifasiga

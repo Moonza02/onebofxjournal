@@ -1701,6 +1701,7 @@ export const en: Dict = {
     bannerTitle: 'Verify your email',
     bannerBody: 'Your address is not verified yet. Request a new code and confirm it.',
     bannerCta: 'Send the code again',
+    bannerEnter: 'Enter the code',
     bannerSending: 'Sending…',
     bannerSent: 'Sent. Check your inbox — and the spam folder.',
 

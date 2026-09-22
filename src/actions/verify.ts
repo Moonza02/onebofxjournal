@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation';
 import { db, type Tx } from '@/lib/db';
 import { clearPending, getPending } from '@/lib/pending';
-import { createSession, requireUser } from '@/lib/session';
+import { createSession, getUser, requireUser } from '@/lib/session';
 import { clientKey, rateLimit } from '@/lib/ratelimit';
 import { getDict } from '@/lib/i18n/server';
 import { fill } from '@/lib/i18n';
@@ -13,6 +13,19 @@ import { issueVerification } from '@/lib/verify-mail';
 import { cleanCode, looksLikeCode, MAX_CODE_ATTEMPTS, verificationUsable } from '@/lib/verify';
 
 export type VerifyState = { error?: string; sent?: boolean; already?: boolean };
+
+/** Kim tasdiqlamoqchi.
+ *
+ *  Ikki manba: ro'yxatdan o'tishda qoldirilgan belgi, yoki sessiya.
+ *  Ikkinchisi bu oqim joriy qilinishidan oldin ochilgan hisoblar
+ *  uchun: ular ichkarida, lekin manzili tasdiqlanmagan.
+ */
+async function pendingUserId(): Promise<{ id: string | null; verified: boolean }> {
+  const user = await getUser();
+  if (user) return { id: user.id, verified: user.emailVerifiedAt !== null };
+
+  return { id: await getPending(), verified: false };
+}
 
 /** Pochtaga kelgan kodni tekshirish.
  *
@@ -30,7 +43,10 @@ export type VerifyState = { error?: string; sent?: boolean; already?: boolean };
  */
 export async function confirmCode(_prev: VerifyState, formData: FormData): Promise<VerifyState> {
   const d = await getDict();
-  const userId = await getPending();
+
+  const who = await pendingUserId();
+  if (who.verified) return { already: true };
+  const userId = who.id;
   if (!userId) return { error: d.verify.errExpired };
 
   const byIp = await rateLimit(await clientKey('code'), 20, 60 * 60 * 1000);
@@ -127,7 +143,9 @@ export async function resendPending(
   _prev: VerifyState,
   _formData: FormData,
 ): Promise<VerifyState> {
-  const userId = await getPending();
+  const who = await pendingUserId();
+  if (who.verified) return { already: true };
+  const userId = who.id;
   if (!userId) return { error: (await getDict()).verify.errExpired };
 
   const limit = await rateLimit(`verify:${userId}`, 5, 60 * 60 * 1000);

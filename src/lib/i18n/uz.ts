@@ -1710,6 +1710,7 @@ export const uz = {
     bannerTitle: 'Pochtangizni tasdiqlang',
     bannerBody: 'Manzilingiz hali tasdiqlanmagan. Kodni qayta so‘rab, tasdiqlab qo‘ying.',
     bannerCta: 'Kodni qayta yuborish',
+    bannerEnter: 'Kodni kiritish',
     bannerSending: 'Yuborilmoqda…',
     bannerSent: 'Yuborildi. Pochtangizni tekshiring — «Spam» papkasini ham.',
 
