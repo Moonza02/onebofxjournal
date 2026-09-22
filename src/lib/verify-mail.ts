@@ -2,6 +2,7 @@ import 'server-only';
 import { db, type Tx } from './db';
 import { getDict } from './i18n/server';
 import { isMailConfigured, sendMail, verifyCodeEmail } from './mail';
+import { logSecret } from './mail-debug';
 import { hashCode, newCode } from './reset';
 import { MAX_OPEN_VERIFICATIONS, verifyExpiry } from './verify';
 import { rateLimit } from './ratelimit';
@@ -66,6 +67,11 @@ export async function issueVerification(user: {
       },
     });
   });
+
+  // Kod saqlandi — xat ketmasa ham u haqiqiy. Shuning uchun log'ga
+  // jo'natishdan **oldin** chiqadi: pochta ishlamayotgan kunlarda
+  // sinash shu bilan davom etadi.
+  logSecret('tasdiqlash kodi', user.email, code);
 
   const { subject, text, html } = verifyCodeEmail({ code, d });
   const sent = await sendMail({ to: user.email, subject, text, html, tag: 'verify' });

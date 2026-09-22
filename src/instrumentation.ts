@@ -11,6 +11,7 @@
  */
 import { isFreemail, mailFromAddress } from './lib/mail-address';
 import { pickMail } from './lib/mail-config';
+import { secretsToLog } from './lib/mail-debug';
 
 /** Server ko'tarilganda bir marta ishlaydi.
  *
@@ -73,6 +74,17 @@ export function register(): void {
           "ko'p provayder bunday xatni rad etadi.",
       );
     }
+  }
+
+  // Vaqtinchalik sinov rejimi. Ogohlantirish baland ovozda, chunki
+  // yoqib qo'yib unutish oson — va yoqiq turgani hisoblarni ochiq
+  // qoldiradi.
+  if (secretsToLog(process.env)) {
+    console.warn(
+      '[XAVF] SECRETS_TO_LOG yoqilgan — tasdiqlash kodlari va parol tiklash ' +
+        "havolalari shu log'ga ochiq yoziladi. Bu faqat pochta ishlamayotgan " +
+        "paytda sinash uchun. Domen va DKIM tayyor bo'lgach darhol o'chiring.",
+    );
   }
 
   const app = need(['APP_URL', 'AUTH_SECRET', 'DATABASE_URL']);

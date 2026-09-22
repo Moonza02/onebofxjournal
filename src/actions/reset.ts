@@ -9,6 +9,7 @@ import { createSession } from '@/lib/session';
 import { clientKey, rateLimit } from '@/lib/ratelimit';
 import { getDict } from '@/lib/i18n/server';
 import { isMailConfigured, resetEmail, sendMail } from '@/lib/mail';
+import { logSecret } from '@/lib/mail-debug';
 import {
   expiryFrom,
   hashToken,
@@ -82,7 +83,10 @@ export async function requestReset(_prev: ResetState, formData: FormData): Promi
 
   // Xat foydalanuvchining o'z tilida.
   const userDict = await getDict(user.locale);
-  const { subject, text, html } = resetEmail({ url: resetUrl(token, appUrl), d: userDict });
+  const url = resetUrl(token, appUrl);
+  logSecret('parolni tiklash havolasi', email, url);
+
+  const { subject, text, html } = resetEmail({ url, d: userDict });
 
   const sent = await sendMail({ to: email, subject, text, html, tag: 'reset' });
 
