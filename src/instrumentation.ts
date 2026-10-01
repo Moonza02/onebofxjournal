@@ -12,6 +12,7 @@
 import { isFreemail, mailFromAddress } from './lib/mail-address';
 import { pickMail } from './lib/mail-config';
 import { secretsToLog } from './lib/mail-debug';
+import { ownerEmails } from './lib/owner';
 
 /** Server ko'tarilganda bir marta ishlaydi.
  *
@@ -85,6 +86,14 @@ export function register(): void {
         "havolalari shu log'ga ochiq yoziladi. Bu faqat pochta ishlamayotgan " +
         "paytda sinash uchun. Domen va DKIM tayyor bo'lgach darhol o'chiring.",
     );
+  }
+
+  // Ega kim ekani log'da ko'rinib tursin: manzil xato yozilsa darajasi
+  // ochilmaydi va buni boshqa yo'l bilan sezish qiyin.
+  const owners = ownerEmails(process.env);
+  if (owners.size > 0) {
+    // eslint-disable-next-line no-console
+    console.log(`[sozlama] Egalar: ${[...owners].join(', ')}`);
   }
 
   const app = need(['APP_URL', 'AUTH_SECRET', 'DATABASE_URL']);

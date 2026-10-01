@@ -159,6 +159,16 @@ export const en: Dict = {
         'Notes attached to a specific trade',
       ],
     },
+    OWNER: {
+      name: 'Owner',
+      tagline: 'For the project owner — not for sale',
+      highlights: [
+        'Every feature unlocked',
+        'Unlimited trades and accounts',
+        'Unlimited students',
+        'No expiry, no payment',
+      ],
+    },
   },
 
   features: {

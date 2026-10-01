@@ -165,6 +165,16 @@ export const uz = {
         'Savdoga bog‘lanadigan izohlar',
       ],
     },
+    OWNER: {
+      name: 'Egasi',
+      tagline: 'Loyiha egasi uchun — sotuvda yo‘q',
+      highlights: [
+        'Hamma imkoniyat ochiq',
+        'Cheksiz savdo va hisob',
+        'Cheksiz o‘quvchi',
+        'Muddat yo‘q, to‘lov yo‘q',
+      ],
+    },
   },
 
   features: {

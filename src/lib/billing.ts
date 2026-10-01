@@ -8,7 +8,17 @@
  *  keltirib qo'yish xatoni kamaytiradi.
  */
 
-export type Plan = 'FREE' | 'PRO' | 'MENTOR';
+/** `OWNER` bazada saqlanmaydi — u `OWNER_EMAILS` dan hisoblanadi va
+ *  sotuvdagi tariflar qatoriga (`PLAN_ORDER`) kirmaydi. Shuning uchun
+ *  Prisma'dagi `Plan` enum o'zgarmaydi: baza faqat uchta qiymatni
+ *  biladi, to'rtinchisi esa kod darajasida ustidan yopiladi.
+ */
+/** Bazadagi `Plan` enum aynan shu uchtasi. To'lov yozuvi ham, hisobdagi
+ *  tarif maydoni ham faqat shulardan birini saqlaydi.
+ */
+export type StoredPlan = 'FREE' | 'PRO' | 'MENTOR';
+
+export type Plan = StoredPlan | 'OWNER';
 
 export type Feature =
   /** Skrinshotdan savdo maydonlarini o'qish. */
@@ -64,8 +74,17 @@ export const PLANS: Record<Plan, PlanSpec> = {
     features: ['screenshot', 'coach', 'economics', 'analytics', 'report', 'backtest', 'mentor'],
     limits: { accounts: 10, tradesPerMonth: Infinity, students: 25 },
   },
+  OWNER: {
+    key: 'OWNER',
+    monthly: 0,
+    features: ['screenshot', 'coach', 'economics', 'analytics', 'report', 'backtest', 'mentor'],
+    limits: { accounts: Infinity, tradesPerMonth: Infinity, students: Infinity },
+  },
 };
 
+/** Sotuvdagi tariflar. `OWNER` ataylab yo'q — narx sahifasida
+ *  ko'rinmaydi va uni hech kim sotib ololmaydi.
+ */
 export const PLAN_ORDER: Plan[] = ['FREE', 'PRO', 'MENTOR'];
 
 /** Sinov muddati — ro'yxatdan o'tganda Pro ochiq turadi. */
@@ -121,7 +140,7 @@ export function sum(tiyin: number, currency: string): string {
 /* ------------------------------------------------------------------ holat */
 
 export type Subscription = {
-  plan: Plan;
+  plan: StoredPlan;
   /** Tarif shu paytgacha amal qiladi. */
   planUntil: Date | null;
   /** Sinov muddati tugaydigan payt. */
@@ -144,7 +163,10 @@ const DAY = 86_400_000;
  *  Muddat tugagan bo'lsa bepulga tushadi — lekin ma'lumot o'chmaydi,
  *  faqat yangi yozish va qo'shimcha imkoniyatlar yopiladi.
  */
-export function activePlan(sub: Subscription, now = new Date()): ActivePlan {
+export function activePlan(sub: Subscription, now = new Date(), owner = false): ActivePlan {
+  // Ega hammasidan ustun: muddat ham, to'lov ham tekshirilmaydi.
+  if (owner) return { plan: 'OWNER', trial: false, daysLeft: null, until: null };
+
   const paidValid = sub.plan !== 'FREE' && sub.planUntil !== null && sub.planUntil > now;
 
   if (paidValid) {

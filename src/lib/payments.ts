@@ -11,7 +11,9 @@ import {
   type ActivePlan,
   type Feature,
   type Plan,
+  type StoredPlan,
 } from './billing';
+import { isOwner } from './owner';
 import { monthRangeIn, partsIn } from './tz';
 
 /** To'lovlar va tarif holati — bazaga tegadigan qismi.
@@ -24,7 +26,7 @@ export type PaymentStatus = 'PENDING' | 'PAID' | 'CANCELLED';
 export type PaymentRow = {
   id: string;
   userId: string;
-  plan: Plan;
+  plan: StoredPlan;
   months: number;
   amount: number;
   provider: PaymentProvider;
@@ -66,7 +68,7 @@ export function trialEnd(now = new Date()): Date {
 
 export type Billing = ActivePlan & {
   /** Bazadagi tarif — muddat tugagan bo'lsa amaldagisidan farq qiladi. */
-  storedPlan: Plan;
+  storedPlan: StoredPlan;
   /** Oyiga savdo chegarasidan qanchasi ishlatilgan. */
   tradesThisMonth: number;
   accounts: number;
@@ -78,16 +80,17 @@ export async function getBilling(user: {
   timezone: string;
 }): Promise<Billing> {
   const row: {
-    plan: Plan;
+    email: string;
+    plan: StoredPlan;
     planUntil: Date | null;
     trialEndsAt: Date | null;
   } | null = await db.user.findUnique({
     where: { id: user.id },
-    select: { plan: true, planUntil: true, trialEndsAt: true },
+    select: { email: true, plan: true, planUntil: true, trialEndsAt: true },
   });
 
-  const sub = row ?? { plan: 'FREE' as Plan, planUntil: null, trialEndsAt: null };
-  const active = activePlan(sub);
+  const sub = row ?? { plan: 'FREE' as StoredPlan, planUntil: null, trialEndsAt: null };
+  const active = activePlan(sub, new Date(), isOwner(row?.email));
 
   const now = new Date();
   const parts = partsIn(now, user.timezone);
@@ -145,7 +148,9 @@ export async function createPayment(options: {
   months: number;
   provider: PaymentProvider;
 }): Promise<PaymentRow | null> {
-  if (options.plan === 'FREE') return null;
+  // `OWNER` sotuvda yo'q va bazada ham yo'q — bu yerga kelib qolsa
+  // yozib emas, to'xtab javob beramiz.
+  if (options.plan === 'FREE' || options.plan === 'OWNER') return null;
   if (!periodFor(options.months)) return null;
 
   const amount = priceFor(options.plan, options.months);
@@ -199,7 +204,7 @@ export async function markPaid(paymentId: string, when = new Date()): Promise<vo
     });
     if (!payment || payment.status === 'PAID') return;
 
-    const user: { plan: Plan; planUntil: Date | null } | null = await tx.user.findUnique({
+    const user: { plan: StoredPlan; planUntil: Date | null } | null = await tx.user.findUnique({
       where: { id: payment.userId },
       select: { plan: true, planUntil: true },
     });

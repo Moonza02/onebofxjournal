@@ -40,6 +40,9 @@ export default async function TarifPage() {
     cap.tradesPerMonth === Infinity
       ? null
       : Math.min(100, (billing.tradesThisMonth / cap.tradesPerMonth) * 100);
+  // Egada hisob soni ham cheksiz — "1 / Infinity" deb yozilmasin.
+  const accountUse =
+    cap.accounts === Infinity ? null : Math.min(100, (billing.accounts / cap.accounts) * 100);
 
   return (
     <>
@@ -112,13 +115,14 @@ export default async function TarifPage() {
                 </span>
                 <span className="grow" />
                 <span className="tnum font-mono text-[12px] font-bold text-txt2">
-                  {billing.accounts} / {cap.accounts}
+                  {billing.accounts}
+                  {accountUse === null ? '' : ` / ${cap.accounts}`}
                 </span>
               </div>
               <div className="h-1.5 overflow-hidden rounded-[4px] bg-[#151A22]">
                 <div
                   className="h-full rounded-[4px] bg-blue"
-                  style={{ width: `${Math.min(100, (billing.accounts / cap.accounts) * 100)}%` }}
+                  style={{ width: `${accountUse ?? 100}%` }}
                 />
               </div>
             </div>
@@ -217,10 +221,13 @@ export default async function TarifPage() {
           </div>
 
           <div className="flex w-full shrink-0 flex-col gap-3.5 xl:w-[340px]">
-            <Card>
-              <CardTitle>{d.billing.openPlan}</CardTitle>
-              <PlanPicker current={billing.plan} providers={enabledProviders()} />
-            </Card>
+            {/* Egaga sotadigan narsa yo'q — tanlagich ko'rsatilmaydi. */}
+            {billing.plan === 'OWNER' ? null : (
+              <Card>
+                <CardTitle>{d.billing.openPlan}</CardTitle>
+                <PlanPicker current={billing.plan} providers={enabledProviders()} />
+              </Card>
+            )}
 
             <Card>
               <CardTitle>{d.billing.questions}</CardTitle>
