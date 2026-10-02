@@ -5,11 +5,12 @@ import { z } from 'zod';
 import { db } from '@/lib/db';
 import { requireUser } from '@/lib/session';
 import { dateFromKey, HABITS, isValidKey } from '@/lib/journal';
+import { parseNumber } from '@/lib/number';
 
 export type JournalState = { error?: string; ok?: boolean };
 
 const rating = z.preprocess(
-  (v) => (v === '' || v === null || v === undefined ? undefined : Number(v)),
+  (v) => (v === '' || v === null || v === undefined ? undefined : parseNumber(v as string)),
   z.number().int().min(1).max(5).optional(),
 );
 

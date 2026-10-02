@@ -15,6 +15,7 @@ import { Icon } from '@/components/ui/icons';
 import ScreenshotPanel from './ScreenshotPanel';
 import { useD } from '@/components/i18n/Provider';
 import { fill } from '@/lib/i18n';
+import { toNumber } from '@/lib/number';
 import { DEFAULT_INSTRUMENTS, SESSIONS, TIMEFRAMES, specFor } from '@/lib/instruments';
 import { money, num, pct } from '@/lib/format';
 import type { TradeFormState } from '@/actions/trades';
@@ -55,11 +56,6 @@ const RATINGS = [
   { name: 'confidence', key: 'confidence' },
   { name: 'stress', key: 'stress' },
 ] as const;
-
-function toNumber(value: string): number {
-  const n = Number(String(value).replace(',', '.'));
-  return Number.isFinite(n) ? n : 0;
-}
 
 /** AI qaytargan ISO satrni datetime-local inputga moslaydi. */
 function toLocalInputValue(iso: string): string {

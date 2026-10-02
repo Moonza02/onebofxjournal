@@ -15,17 +15,18 @@ import { evaluateAlerts } from '@/lib/alerts';
 import { logAlerts } from './alerts';
 import { specFor } from '@/lib/instruments';
 import { sessionFor } from '@/lib/tz';
+import { parseNumber } from '@/lib/number';
 
 export type TradeFormState = { error?: string };
 
 /** Bo'sh satr → undefined, aks holda son. */
 const optionalNumber = z.preprocess(
-  (v) => (v === '' || v === null || v === undefined ? undefined : Number(v)),
+  (v) => (v === '' || v === null || v === undefined ? undefined : parseNumber(v as string)),
   z.number().finite().optional(),
 );
 
 const requiredNumber = z.preprocess(
-  (v) => (v === '' || v === null || v === undefined ? NaN : Number(v)),
+  (v) => (v === '' || v === null || v === undefined ? NaN : parseNumber(v as string)),
   z.number().finite(),
 );
 

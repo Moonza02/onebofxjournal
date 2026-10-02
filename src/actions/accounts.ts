@@ -8,10 +8,14 @@ import { requireUser } from '@/lib/session';
 import { canAddAccount, getBilling } from '@/lib/payments';
 import { getDict } from '@/lib/i18n/server';
 import type { Dict } from '@/lib/i18n';
+import { parseNumber } from '@/lib/number';
 
 export type AccountFormState = { error?: string; ok?: boolean };
 
-const numberField = z.preprocess((v) => Number(v), z.number().finite().nonnegative());
+const numberField = z.preprocess(
+  (v) => parseNumber(v as string),
+  z.number().finite().nonnegative(),
+);
 
 const accountSchema = (d: Dict) =>
   z.object({
