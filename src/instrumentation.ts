@@ -12,7 +12,7 @@
 import { isFreemail, mailFromAddress } from './lib/mail-address';
 import { pickMail } from './lib/mail-config';
 import { secretsToLog } from './lib/mail-debug';
-import { ownerEmails } from './lib/owner';
+import { giftEmails, ownerEmails } from './lib/owner';
 
 /** Server ko'tarilganda bir marta ishlaydi.
  *
@@ -94,6 +94,12 @@ export function register(): void {
   if (owners.size > 0) {
     // eslint-disable-next-line no-console
     console.log(`[sozlama] Egalar: ${[...owners].join(', ')}`);
+  }
+
+  const gifts = giftEmails(process.env);
+  if (gifts.size > 0) {
+    // eslint-disable-next-line no-console
+    console.log(`[sozlama] Sovg'a qilinganlar: ${[...gifts].join(', ')}`);
   }
 
   const app = need(['APP_URL', 'AUTH_SECRET', 'DATABASE_URL']);

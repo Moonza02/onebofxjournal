@@ -165,6 +165,15 @@ export const uz = {
         'Savdoga bog‘lanadigan izohlar',
       ],
     },
+    GIFT: {
+      name: 'Sovg‘a',
+      tagline: 'Egasi tomonidan berilgan to‘liq kirish',
+      highlights: [
+        'Mentor tarifidagi hamma narsa',
+        'Bepul va muddatsiz',
+        'To‘lov talab qilinmaydi',
+      ],
+    },
     OWNER: {
       name: 'Egasi',
       tagline: 'Loyiha egasi uchun — sotuvda yo‘q',

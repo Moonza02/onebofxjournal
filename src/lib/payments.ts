@@ -13,7 +13,7 @@ import {
   type Plan,
   type StoredPlan,
 } from './billing';
-import { isOwner } from './owner';
+import { isGift, isOwner } from './owner';
 import { monthRangeIn, partsIn } from './tz';
 
 /** To'lovlar va tarif holati — bazaga tegadigan qismi.
@@ -90,7 +90,9 @@ export async function getBilling(user: {
   });
 
   const sub = row ?? { plan: 'FREE' as StoredPlan, planUntil: null, trialEndsAt: null };
-  const active = activePlan(sub, new Date(), isOwner(row?.email));
+  // Tartib muhim: ega sovg'adan ustun.
+  const granted = isOwner(row?.email) ? 'OWNER' : isGift(row?.email) ? 'GIFT' : null;
+  const active = activePlan(sub, new Date(), granted);
 
   const now = new Date();
   const parts = partsIn(now, user.timezone);
@@ -148,9 +150,11 @@ export async function createPayment(options: {
   months: number;
   provider: PaymentProvider;
 }): Promise<PaymentRow | null> {
-  // `OWNER` sotuvda yo'q va bazada ham yo'q — bu yerga kelib qolsa
-  // yozib emas, to'xtab javob beramiz.
-  if (options.plan === 'FREE' || options.plan === 'OWNER') return null;
+  // `OWNER` va `GIFT` sotuvda ham, bazada ham yo'q — bu yerga kelib
+  // qolsa yozib emas, to'xtab javob beramiz. Sovg'a uchun to'lov
+  // yozuvi yaratilmasligi ayniqsa muhim: aks holda u daromad
+  // hisobotiga tushib, raqamlarni yolg'onlab qo'yardi.
+  if (options.plan === 'FREE' || options.plan === 'OWNER' || options.plan === 'GIFT') return null;
   if (!periodFor(options.months)) return null;
 
   const amount = priceFor(options.plan, options.months);

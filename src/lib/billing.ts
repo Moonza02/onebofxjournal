@@ -18,7 +18,7 @@
  */
 export type StoredPlan = 'FREE' | 'PRO' | 'MENTOR';
 
-export type Plan = StoredPlan | 'OWNER';
+export type Plan = StoredPlan | 'OWNER' | 'GIFT';
 
 export type Feature =
   /** Skrinshotdan savdo maydonlarini o'qish. */
@@ -79,6 +79,15 @@ export const PLANS: Record<Plan, PlanSpec> = {
     monthly: 0,
     features: ['screenshot', 'coach', 'economics', 'analytics', 'report', 'backtest', 'mentor'],
     limits: { accounts: Infinity, tradesPerMonth: Infinity, students: Infinity },
+  },
+  // Sovg'a — eng yuqori sotuvdagi tarifning aynan o'zi, lekin bepul va
+  // muddatsiz. Ataylab `OWNER` darajasida emas: sherikka mahsulotning
+  // to'liq versiyasi beriladi, egasining cheksiz huquqlari emas.
+  GIFT: {
+    key: 'GIFT',
+    monthly: 0,
+    features: ['screenshot', 'coach', 'economics', 'analytics', 'report', 'backtest', 'mentor'],
+    limits: { accounts: 10, tradesPerMonth: Infinity, students: 25 },
   },
 };
 
@@ -163,9 +172,14 @@ const DAY = 86_400_000;
  *  Muddat tugagan bo'lsa bepulga tushadi — lekin ma'lumot o'chmaydi,
  *  faqat yangi yozish va qo'shimcha imkoniyatlar yopiladi.
  */
-export function activePlan(sub: Subscription, now = new Date(), owner = false): ActivePlan {
-  // Ega hammasidan ustun: muddat ham, to'lov ham tekshirilmaydi.
-  if (owner) return { plan: 'OWNER', trial: false, daysLeft: null, until: null };
+export function activePlan(
+  sub: Subscription,
+  now = new Date(),
+  granted: 'OWNER' | 'GIFT' | null = null,
+): ActivePlan {
+  // Ega va sovg'a hammasidan ustun: muddat ham, to'lov ham
+  // tekshirilmaydi, chunki ikkalasi ham pulga bog'liq emas.
+  if (granted) return { plan: granted, trial: false, daysLeft: null, until: null };
 
   const paidValid = sub.plan !== 'FREE' && sub.planUntil !== null && sub.planUntil > now;
 

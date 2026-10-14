@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isOwner, ownerEmails } from '../src/lib/owner';
+import { giftEmails, isGift, isOwner, ownerEmails } from '../src/lib/owner';
 import { activePlan, has, limits, PLAN_ORDER, PLANS, priceFor } from '../src/lib/billing';
 
 describe('ownerEmails', () => {
@@ -45,7 +45,7 @@ describe('OWNER tarifi', () => {
   const sub = { plan: 'FREE' as const, planUntil: null, trialEndsAt: null };
 
   it('ega — muddat ham, to‘lov ham tekshirilmaydi', () => {
-    expect(activePlan(sub, new Date(), true)).toEqual({
+    expect(activePlan(sub, new Date(), 'OWNER')).toEqual({
       plan: 'OWNER',
       trial: false,
       daysLeft: null,
@@ -54,7 +54,7 @@ describe('OWNER tarifi', () => {
   });
 
   it('ega emas — odatdagidek bepulga tushadi', () => {
-    expect(activePlan(sub, new Date(), false).plan).toBe('FREE');
+    expect(activePlan(sub, new Date(), null).plan).toBe('FREE');
   });
 
   // Muddati tugagan to'lov ham egaga ta'sir qilmaydi.
@@ -64,7 +64,7 @@ describe('OWNER tarifi', () => {
       planUntil: new Date('2020-01-01'),
       trialEndsAt: null,
     };
-    expect(activePlan(expired, new Date(), true).plan).toBe('OWNER');
+    expect(activePlan(expired, new Date(), 'OWNER').plan).toBe('OWNER');
   });
 
   it('hamma imkoniyat ochiq', () => {
@@ -88,5 +88,42 @@ describe('OWNER tarifi', () => {
 
   it('narxi yo‘q', () => {
     expect(priceFor('OWNER', 12)).toBe(0);
+  });
+});
+
+describe('GIFT tarifi', () => {
+  const sub = { plan: 'FREE' as const, planUntil: null, trialEndsAt: null };
+  const env = { GIFT_EMAILS: 'Nurillo@Example.uz' };
+
+  it('ro‘yxatdagi manzil sovg‘a oladi', () => {
+    expect(isGift('nurillo@example.uz', env)).toBe(true);
+    expect(isGift('kimdir@example.uz', env)).toBe(false);
+  });
+
+  it('sozlanmagan — hech kimga sovg‘a yo‘q', () => {
+    expect(giftEmails({}).size).toBe(0);
+    expect(isGift('nurillo@example.uz', {})).toBe(false);
+  });
+
+  it('muddat ham, to‘lov ham tekshirilmaydi', () => {
+    expect(activePlan(sub, new Date(), 'GIFT')).toEqual({
+      plan: 'GIFT',
+      trial: false,
+      daysLeft: null,
+      until: null,
+    });
+  });
+
+  it('Mentor darajasidagi hamma imkoniyat ochiq', () => {
+    for (const feature of PLANS.MENTOR.features) {
+      expect(has('GIFT', feature)).toBe(true);
+    }
+    expect(limits('GIFT')).toEqual(PLANS.MENTOR.limits);
+  });
+
+  // Eng muhim shart: sovg‘a pul hisobotlariga tegmaydi.
+  it('sotuvda yo‘q va narxi yo‘q', () => {
+    expect(PLAN_ORDER).not.toContain('GIFT');
+    expect(priceFor('GIFT', 12)).toBe(0);
   });
 });

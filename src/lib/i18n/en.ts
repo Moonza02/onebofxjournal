@@ -159,6 +159,15 @@ export const en: Dict = {
         'Notes attached to a specific trade',
       ],
     },
+    GIFT: {
+      name: 'Gift',
+      tagline: 'Full access granted by the owner',
+      highlights: [
+        'Everything in Mentor',
+        'Free, with no expiry',
+        'No payment required',
+      ],
+    },
     OWNER: {
       name: 'Owner',
       tagline: 'For the project owner — not for sale',

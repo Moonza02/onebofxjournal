@@ -221,8 +221,8 @@ export default async function TarifPage() {
           </div>
 
           <div className="flex w-full shrink-0 flex-col gap-3.5 xl:w-[340px]">
-            {/* Egaga sotadigan narsa yo'q — tanlagich ko'rsatilmaydi. */}
-            {billing.plan === 'OWNER' ? null : (
+            {/* Ega va sovg'a olganga sotadigan narsa yo'q — tanlagich ko'rsatilmaydi. */}
+            {billing.plan === 'OWNER' || billing.plan === 'GIFT' ? null : (
               <Card>
                 <CardTitle>{d.billing.openPlan}</CardTitle>
                 <PlanPicker current={billing.plan} providers={enabledProviders()} />
