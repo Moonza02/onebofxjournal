@@ -12,6 +12,7 @@
 import { isFreemail, mailFromAddress } from './lib/mail-address';
 import { pickMail } from './lib/mail-config';
 import { secretsToLog } from './lib/mail-debug';
+import { aiEnabled, DEFAULT_MODEL, looksLikeSecret, validModelName } from './lib/ai';
 import { giftEmails, ownerEmails } from './lib/owner';
 
 /** Server ko'tarilganda bir marta ishlaydi.
@@ -100,6 +101,21 @@ export function register(): void {
   if (gifts.size > 0) {
     // eslint-disable-next-line no-console
     console.log(`[sozlama] Sovg'a qilinganlar: ${[...gifts].join(', ')}`);
+  }
+
+  // Kalit bir marta model o'zgaruvchisiga tushib qolgan edi — va
+  // provayderning javobida o'sha kalit qaytib, ekranga chiqib ketgandi.
+  // Shunday chalkashlik yana bo'lsa shu yerda, birinchi soniyada aytiladi.
+  const model = (process.env.ANTHROPIC_MODEL ?? '').trim();
+  if (model && !validModelName(model)) {
+    console.warn(
+      looksLikeSecret(model)
+        ? `[XAVF] ANTHROPIC_MODEL maxfiy kalitga o'xshaydi. Kalit ANTHROPIC_API_KEY ga yozilishi kerak. Model sifatida ${DEFAULT_MODEL} ishlatiladi.`
+        : `[sozlama] ANTHROPIC_MODEL yaroqsiz, ${DEFAULT_MODEL} ishlatiladi.`,
+    );
+  }
+  if (!aiEnabled()) {
+    console.warn("[sozlama] ANTHROPIC_API_KEY yo'q — skrinshotdan o'qish o'chiq.");
   }
 
   const app = need(['APP_URL', 'AUTH_SECRET', 'DATABASE_URL']);

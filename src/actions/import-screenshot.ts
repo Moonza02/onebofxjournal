@@ -87,12 +87,8 @@ export async function readHistoryScreenshot(formData: FormData): Promise<History
       warnings,
     };
   } catch (error) {
+    // Provayder xatosi ekranga chiqmaydi — unda kalit qaytishi mumkin.
     await logError('import.screenshot', error, { userId: user.id, path: '/trades/import' });
-    return {
-      error:
-        error instanceof Error
-          ? fill(d.screenshot.errReadFailed, { reason: error.message })
-          : d.screenshot.errReadFailedShort,
-    };
+    return { error: d.screenshot.errReadFailedShort };
   }
 }

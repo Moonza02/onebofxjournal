@@ -7,7 +7,7 @@ import { getBilling } from '@/lib/payments';
 import { has } from '@/lib/billing';
 import { getI18n } from '@/lib/i18n/server';
 import { clientKey, rateLimit } from '@/lib/ratelimit';
-import { fill } from '@/lib/i18n';
+import { logError } from '@/lib/log';
 
 export type ScreenshotState = {
   key?: string;
@@ -71,13 +71,11 @@ export async function readScreenshot(
     );
     return { key, fields: result.fields, warnings: result.warnings, note: result.note };
   } catch (error) {
-    // O'qish ishlamasa ham rasm saqlanib qoladi — savdoga biriktiriladi.
-    return {
-      key,
-      error:
-        error instanceof Error
-          ? fill(d.screenshot.errReadFailed, { reason: error.message })
-          : d.screenshot.errReadFailedShort,
-    };
+    // Provayderning xato matni ataylab ko'rsatilmaydi: bir marta unda
+    // API kalitining o'zi qaytgan va to'g'ridan-to'g'ri ekranga
+    // chiqqan edi. Sabab log'da qoladi, foydalanuvchi qisqa xabar
+    // ko'radi. O'qish ishlamasa ham rasm saqlanib qoladi.
+    await logError('screenshot.read', error, { userId: user.id });
+    return { key, error: d.screenshot.errReadFailedShort };
   }
 }

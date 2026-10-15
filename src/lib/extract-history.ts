@@ -1,6 +1,7 @@
 import 'server-only';
 import Anthropic from '@anthropic-ai/sdk';
 import type { Dict } from './i18n';
+import { aiKey, aiModel } from './ai';
 
 /** Tarix skrinshotidan bir nechta savdoni o'qish.
  *
@@ -177,8 +178,6 @@ note maydoniga bir jumlada yoz: nechta savdo ko'rdingu nimani o'qiy olmading.`;
 
 const LANGUAGE_NAMES: Record<string, string> = { uz: 'o‘zbek', ru: 'rus', en: 'ingliz' };
 
-const MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5';
-
 export type HistoryExtraction = { grid: HistoryGrid; note: string };
 
 export async function extractHistory(
@@ -187,10 +186,10 @@ export async function extractHistory(
   d: Dict,
   locale = 'uz',
 ): Promise<HistoryExtraction> {
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  const client = new Anthropic({ apiKey: aiKey() });
 
   const response = await client.messages.create({
-    model: MODEL,
+    model: aiModel(),
     max_tokens: 4096,
     tools: [TOOL],
     tool_choice: { type: 'tool', name: TOOL.name },

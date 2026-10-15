@@ -2,6 +2,7 @@ import 'server-only';
 import Anthropic from '@anthropic-ai/sdk';
 import { DEFAULT_INSTRUMENTS, plausiblePrice, specFor } from './instruments';
 import { fill, type Dict } from './i18n';
+import { aiEnabled, aiKey, aiModel } from './ai';
 
 /** Skrinshotdan savdo ma'lumotini o'qish.
  *
@@ -38,10 +39,8 @@ export type ExtractionResult = {
 };
 
 export function isExtractionEnabled(): boolean {
-  return Boolean(process.env.ANTHROPIC_API_KEY);
+  return aiEnabled();
 }
-
-const MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5';
 
 /** `note` foydalanuvchiga ko'rinadi — u interfeys tilida yozilsin. */
 const LANGUAGE_NAMES: Record<string, string> = { uz: 'o‘zbek', ru: 'rus', en: 'ingliz' };
@@ -234,10 +233,10 @@ export async function extractTrade(
   d: Dict,
   locale = 'uz',
 ): Promise<ExtractionResult> {
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  const client = new Anthropic({ apiKey: aiKey() });
 
   const response = await client.messages.create({
-    model: MODEL,
+    model: aiModel(),
     max_tokens: 1024,
     tools: [TOOL],
     tool_choice: { type: 'tool', name: TOOL.name },
