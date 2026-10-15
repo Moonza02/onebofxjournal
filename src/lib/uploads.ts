@@ -53,6 +53,28 @@ export function sniffImage(data: Buffer): ImageType | null {
   return null;
 }
 
+/** Rasmni tekshirib o'qish — saqlamasdan.
+ *
+ *  Tarix skrinshoti uchun: u grafik emas, ro'yxat. Bir marta o'qiladi,
+ *  jadvalga aylanadi va kerak bo'lmaydi. Saqlash esa joy egallaydi va
+ *  keyin uni tozalash haqida o'ylash kerak bo'lardi.
+ *
+ *  Tekshiruv `saveUpload` dagi bilan bir xil va shu sababdan ikkala
+ *  joyda ham ikki qavat: e'lon qilingan turi ham, haqiqiy baytlari ham.
+ */
+export async function readImage(file: File): Promise<{ data: Buffer; mediaType: ImageType }> {
+  if (!(file.type in ALLOWED)) throw new UploadError('uploadType');
+  if (file.size > MAX_UPLOAD_BYTES) throw new UploadError('uploadSize');
+
+  const data = Buffer.from(await file.arrayBuffer());
+
+  const mediaType = sniffImage(data);
+  if (!mediaType) throw new UploadError('uploadType');
+  if (data.length > MAX_UPLOAD_BYTES) throw new UploadError('uploadSize');
+
+  return { data, mediaType };
+}
+
 export type SavedUpload = { key: string; mediaType: string; bytes: number };
 
 export async function saveUpload(userId: string, file: File): Promise<SavedUpload> {

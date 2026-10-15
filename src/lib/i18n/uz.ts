@@ -702,6 +702,18 @@ export const uz = {
     dateError: 'Sana noto‘g‘ri.',
   },
 
+  importShot: {
+    title: 'Tarix skrinshotidan',
+    hint: 'MT4/MT5 dagi tarix ro‘yxatining rasmini tashlang — undagi savdolar bir yo‘la o‘qiladi.',
+    pick: 'Rasm tanlash',
+    reading: 'O‘qilyapti…',
+    errNothing: 'Rasmda savdo topilmadi. Tarix ro‘yxati ko‘rinib turganiga ishonch hosil qiling.',
+    warnAssumedOpen:
+      '{n} ta savdoda ochilish vaqti ko‘rinmadi — yopilish vaqti qo‘yildi. Ushlash vaqti statistikasi ular uchun hisoblanmaydi.',
+    warnDropped: '{n} ta qator tushunarsiz bo‘lgani uchun tashlandi.',
+    warnCheck: 'Saqlashdan oldin raqamlarni tekshiring — rasm o‘qishda xato bo‘lishi mumkin.',
+  },
+
   tradeForm: {
     errSymbol: 'Instrumentni kiriting.',
     errOpenedAt: 'Ochilish vaqtini kiriting.',

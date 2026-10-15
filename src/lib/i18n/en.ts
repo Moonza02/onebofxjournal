@@ -696,6 +696,18 @@ export const en: Dict = {
     dateError: 'Invalid date.',
   },
 
+  importShot: {
+    title: 'From a history screenshot',
+    hint: 'Drop a picture of the MT4/MT5 history list — every trade on it is read at once.',
+    pick: 'Choose image',
+    reading: 'Reading…',
+    errNothing: 'No trades found in the image. Make sure the history list is visible.',
+    warnAssumedOpen:
+      '{n} trades had no open time visible — the close time was used instead. Holding-time stats will not be computed for them.',
+    warnDropped: '{n} rows were dropped as unreadable.',
+    warnCheck: 'Check the numbers before saving — reading an image can go wrong.',
+  },
+
   tradeForm: {
     errSymbol: 'Enter the instrument.',
     errOpenedAt: 'Enter the open time.',

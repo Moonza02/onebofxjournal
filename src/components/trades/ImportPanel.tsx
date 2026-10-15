@@ -12,6 +12,7 @@ import { decodeBuffer } from '@/lib/import/decode';
 import { FIELDS, type Field, type Mapping } from '@/lib/import/fields';
 import { mapRows, missingFields, type IssueCode, type RowResult } from '@/lib/import/map';
 import type { ImportState } from '@/actions/import';
+import type { HistoryShotState } from '@/actions/import-screenshot';
 
 /** Oldindan ko'rishda nechta qator chiqadi. Qolgani ham saqlanadi —
  *  shunchaki ekranga sig'masligi uchun kesiladi. */
@@ -58,8 +59,13 @@ const FILE_ERROR: Record<ImportError['code'], (d: Dict) => string> = {
 
 export default function ImportPanel({
   action,
+  readShot,
+  shotEnabled = false,
 }: {
   action: (prev: ImportState, formData: FormData) => Promise<ImportState>;
+  /** Tarix skrinshotini jadvalga aylantiradigan server amali. */
+  readShot?: (formData: FormData) => Promise<HistoryShotState>;
+  shotEnabled?: boolean;
 }) {
   const d = useD();
   const [state, formAction] = useActionState<ImportState, FormData>(action, {});
@@ -74,6 +80,44 @@ export default function ImportPanel({
   const [dismissed, setDismissed] = useState(false);
   const [reading, setReading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Skrinshot alohida holatda: u fayl emas, serverda o'qiladi.
+  const [shotReading, setShotReading] = useState(false);
+  const [shotWarnings, setShotWarnings] = useState<string[]>([]);
+  const [shotNote, setShotNote] = useState('');
+  const shotRef = useRef<HTMLInputElement>(null);
+
+  async function onShot(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file || !readShot) return;
+
+    setShotReading(true);
+    setFileError('');
+    setShotWarnings([]);
+    setShotNote('');
+    setParsed(null);
+
+    try {
+      const body = new FormData();
+      body.set('screenshot', file);
+      const result = await readShot(body);
+
+      if (result.error) {
+        setFileError(result.error);
+      } else if (result.parsed) {
+        setParsed(result.parsed);
+        setMapping(result.parsed.mapping);
+        setFileName(file.name);
+        setShotWarnings(result.warnings ?? []);
+        setShotNote(result.note ?? '');
+      }
+    } catch {
+      setFileError(FILE_ERROR.badFile(d));
+    } finally {
+      setShotReading(false);
+      if (shotRef.current) shotRef.current.value = '';
+    }
+  }
 
   // Fayl brauzerda o'qiladi: serverga faqat tasdiqlangandan keyin
   // boradi va oraliqda hech narsa saqlanmaydi.
@@ -116,6 +160,8 @@ export default function ImportPanel({
     setMapping({});
     setFileName('');
     setFileError('');
+    setShotWarnings([]);
+    setShotNote('');
   }
 
   /* --------------------------------------------------------------- tugadi */
@@ -206,6 +252,39 @@ export default function ImportPanel({
             </>
           ) : null}
         </div>
+
+        {shotEnabled && readShot ? (
+          <div className="mt-3.5 border-t border-line2 pt-3.5">
+            <div className="text-[11px] font-bold tracking-[0.06em] text-txt3">
+              {d.importShot.title}
+            </div>
+            <p className="mt-1 text-[12px] leading-relaxed text-txt3">{d.importShot.hint}</p>
+
+            <label className="mt-2.5 inline-flex h-[38px] cursor-pointer items-center gap-2 rounded-[10px] border border-line bg-card2 px-4 text-[13px] font-bold text-txt2 transition-colors hover:text-txt">
+              <Icon name="img" size={15} />
+              {shotReading ? d.importShot.reading : d.importShot.pick}
+              <input
+                ref={shotRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="hidden"
+                onChange={onShot}
+              />
+            </label>
+
+            {shotNote ? <p className="mt-2 text-[11.5px] text-txt4">{shotNote}</p> : null}
+
+            {shotWarnings.length > 0 ? (
+              <ul className="mt-2 flex flex-col gap-1">
+                {shotWarnings.map((w, i) => (
+                  <li key={i} className="text-[11.5px] leading-relaxed text-amber">
+                    {w}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        ) : null}
 
         {fileError ? (
           <p className="mt-3 rounded-[10px] border border-loss/30 bg-loss-soft px-3 py-2 text-[12.5px] text-loss">
