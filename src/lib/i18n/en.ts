@@ -716,6 +716,8 @@ export const en: Dict = {
     saveEdit: 'Save changes',
     requiredNote: 'Starred fields are required',
     step1: '1 · Trade details',
+    account: 'ACCOUNT',
+    accountHint: 'Equity {amount} — risk is measured against it',
     instrument: 'INSTRUMENT *',
     direction: 'DIRECTION *',
     openedAt: 'OPENED AT *',

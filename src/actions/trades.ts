@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import { requireUser } from '@/lib/session';
-import { getActiveAccount, getTrades } from '@/lib/account';
+import { getActiveAccount, getOwnedAccount, getTrades } from '@/lib/account';
 import { canAddTrade, getBilling } from '@/lib/payments';
 import { getDict } from '@/lib/i18n/server';
 import type { Dict } from '@/lib/i18n';
@@ -176,7 +176,16 @@ export async function createTrade(
   _prev: TradeFormState,
   formData: FormData,
 ): Promise<TradeFormState> {
-  const { user, account } = await getActiveAccount();
+  const { user, account: active } = await getActiveAccount();
+
+  // Qaysi hisobga yoziladi. Formada tanlangani bo'lsa o'sha, bo'lmasa
+  // faol hisob. Egalik tekshiriladi — `accountId` oddiy forma maydoni,
+  // unga ishonib bo'lmaydi.
+  //
+  // Faol hisobni almashtirmaydi: odam uchta hisob bo'yicha ketma-ket
+  // savdo yozsa ham, paneli o'zi tanlagan hisobda qolaveradi.
+  const picked = await getOwnedAccount(user.id, String(formData.get('accountId') ?? ''));
+  const account = picked ?? active;
 
   // Oylik chegara — tarifga bog'liq. Savdo qo'shishdan oldin tekshiriladi.
   const d = await getDict(user.locale);

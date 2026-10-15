@@ -23,6 +23,20 @@ import type { ExtractedTrade } from '@/lib/extract';
 
 export type SetupChoice = { id: string; name: string; entryRules: string[] };
 
+/** Savdo formasidagi hisob tanlagichi uchun.
+ *
+ *  `balance` — hisobning hozirgi kapitali (boshlang'ich + natija), ya'ni
+ *  risk foizi aynan shu hisobdan hisoblanadi. Uchta funded hisobda
+ *  limitlar ham, kapital ham har xil bo'lgani uchun tanlash bilan
+ *  birga butun "Jonli hisob" bloki qayta hisoblanishi kerak.
+ */
+export type AccountChoice = {
+  id: string;
+  name: string;
+  balance: number;
+  riskPerTradePct: number;
+};
+
 export type TradeFormValues = {
   symbol: string;
   direction: 'LONG' | 'SHORT';
@@ -71,6 +85,8 @@ export default function TradeForm({
   setups,
   balance,
   riskPerTradePct,
+  accounts,
+  defaultAccountId,
   submitLabel,
   cancelHref,
   screenshotEnabled,
@@ -80,6 +96,9 @@ export default function TradeForm({
   setups: SetupChoice[];
   balance: number;
   riskPerTradePct: number;
+  /** Tanlash mumkin bo'lgan hisoblar. Bitta bo'lsa tanlagich chizilmaydi. */
+  accounts?: AccountChoice[];
+  defaultAccountId?: string;
   submitLabel: string;
   cancelHref: string;
   screenshotEnabled: boolean;
@@ -87,6 +106,14 @@ export default function TradeForm({
   const [state, formAction, pending] = useActionState<TradeFormState, FormData>(action, {});
   const d = useD();
   const [v, setV] = useState<TradeFormValues>(initial);
+  const [accountId, setAccountId] = useState(defaultAccountId ?? '');
+
+  // Tanlangan hisobning kapitali va risk foizi. Ro'yxat berilmagan
+  // sahifalarda (masalan tahrirlashda) oddiygina props ishlatiladi.
+  const picked = accounts?.find((a) => a.id === accountId);
+  const accountBalance = picked?.balance ?? balance;
+  const accountRiskPct = picked?.riskPerTradePct ?? riskPerTradePct;
+  const showAccounts = (accounts?.length ?? 0) > 1;
 
   const set = useCallback(
     <K extends keyof TradeFormValues>(key: K, value: TradeFormValues[K]) =>
@@ -140,14 +167,14 @@ export default function TradeForm({
 
     const pips = spec.pipSize > 0 ? Math.abs(e - s) / spec.pipSize : 0;
     const risk = pips * spec.pipValuePerLot * vol;
-    const riskPct = balance > 0 ? (risk / balance) * 100 : 0;
+    const riskPct = accountBalance > 0 ? (risk / accountBalance) * 100 : 0;
     const rr = Math.abs(e - s) > 0 && t > 0 ? Math.abs(t - e) / Math.abs(e - s) : 0;
 
-    const targetRisk = (balance * riskPerTradePct) / 100;
+    const targetRisk = (accountBalance * accountRiskPct) / 100;
     const suggested = pips > 0 ? targetRisk / (pips * spec.pipValuePerLot) : 0;
 
     return { pips, risk, riskPct, rr, reward: risk * rr, suggested };
-  }, [v.entryPrice, v.stopPrice, v.takeProfit, v.volume, spec, balance, riskPerTradePct]);
+  }, [v.entryPrice, v.stopPrice, v.takeProfit, v.volume, spec, accountBalance, accountRiskPct]);
 
   const entryNum = toNumber(v.entryPrice);
   const stopNum = toNumber(v.stopPrice);
@@ -173,6 +200,25 @@ export default function TradeForm({
           >
             {d.tradeForm.step1}
           </CardTitle>
+
+          {showAccounts ? (
+            <div className="mb-3.5 flex flex-wrap items-end gap-3.5 border-b border-line2 pb-3.5">
+              <SelectField
+                label={d.tradeForm.account}
+                name="accountId"
+                value={accountId}
+                onChange={(e) => setAccountId(e.target.value)}
+                hint={fill(d.tradeForm.accountHint, { amount: money(accountBalance) })}
+                className="grow-0 basis-[260px]"
+              >
+                {accounts?.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+              </SelectField>
+            </div>
+          ) : null}
 
           <div className="flex flex-wrap items-end gap-3.5">
             <SelectField

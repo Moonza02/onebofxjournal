@@ -722,6 +722,8 @@ export const uz = {
     saveEdit: 'O‘zgarishlarni saqlash',
     requiredNote: 'Yulduzchali maydonlar shart',
     step1: '1 · Savdo ma’lumotlari',
+    account: 'HISOB',
+    accountHint: 'Kapital {amount} — risk shundan hisoblanadi',
     instrument: 'INSTRUMENT *',
     direction: 'YO‘NALISH *',
     openedAt: 'OCHILISH VAQTI *',

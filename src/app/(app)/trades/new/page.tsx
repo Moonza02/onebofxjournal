@@ -1,7 +1,7 @@
 import Topbar from '@/components/ui/Topbar';
 import TradeForm from '@/components/trades/TradeForm';
 import { createTrade } from '@/actions/trades';
-import { getActiveAccount, getSetupOptions, getTrades } from '@/lib/account';
+import { getAccounts, getActiveAccount, getSetupOptions, getTrades } from '@/lib/account';
 import { defaultChecks } from '@/lib/starter-data';
 import { toLocalInput } from '@/lib/format';
 import { summarize } from '@/lib/stats';
@@ -15,12 +15,32 @@ export default async function NewTradePage() {
   const { user, account } = await getActiveAccount();
   const d = await getDict(user.locale);
 
-  const [setups, trades] = await Promise.all([
+  const [setups, trades, all] = await Promise.all([
     getSetupOptions(user.id),
     getTrades(account.id),
+    getAccounts(user.id),
   ]);
 
   const summary = summarize(trades, account.startingBalance);
+
+  // Har bir hisobning hozirgi kapitali. Tanlagich bilan birga risk
+  // foizi ham qayta hisoblanishi kerak: uchta funded hisobda kapital
+  // ham, risk qoidasi ham har xil bo'ladi.
+  //
+  // Faol hisob uchun yuqoridagi natija qayta ishlatiladi — bir xil
+  // so'rovni ikki marta yubormaymiz.
+  const open = all.filter((a) => !a.isArchived);
+  const choices = await Promise.all(
+    open.map(async (a) => ({
+      id: a.id,
+      name: a.name,
+      riskPerTradePct: a.riskPerTradePct,
+      balance:
+        a.id === account.id
+          ? summary.balance
+          : summarize(await getTrades(a.id), a.startingBalance).balance,
+    })),
+  );
 
   return (
     <>
@@ -31,6 +51,8 @@ export default async function NewTradePage() {
           setups={setups}
           balance={summary.balance}
           riskPerTradePct={account.riskPerTradePct}
+          accounts={choices}
+          defaultAccountId={account.id}
           screenshotEnabled={isExtractionEnabled()}
           submitLabel={d.tradeForm.saveNew}
           cancelHref="/trades"

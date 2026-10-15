@@ -718,6 +718,8 @@ export const ru: Dict = {
     saveEdit: 'Сохранить изменения',
     requiredNote: 'Поля со звёздочкой обязательны',
     step1: '1 · Данные сделки',
+    account: 'СЧЁТ',
+    accountHint: 'Капитал {amount} — риск считается от него',
     instrument: 'ИНСТРУМЕНТ *',
     direction: 'НАПРАВЛЕНИЕ *',
     openedAt: 'ВРЕМЯ ОТКРЫТИЯ *',

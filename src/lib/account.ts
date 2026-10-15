@@ -49,6 +49,22 @@ export async function getActiveAccount(): Promise<{ user: SessionUser; account: 
   return { user, account };
 }
 
+/** Foydalanuvchining o'z hisobi. Begonasi yoki arxivlangani — `null`.
+ *
+ *  Savdo formasidagi hisob tanlagichi uchun: mijoz yuborgan `accountId`
+ *  ga ishonib bo'lmaydi, u shunchaki forma maydoni. Shuning uchun
+ *  egalik har safar shu yerda tekshiriladi.
+ */
+export async function getOwnedAccount(
+  userId: string,
+  accountId: string,
+): Promise<AccountRow | null> {
+  const id = accountId.trim();
+  if (!id) return null;
+
+  return db.account.findFirst({ where: { id, userId, isArchived: false } });
+}
+
 export async function getAccounts(userId: string): Promise<AccountRow[]> {
   return db.account.findMany({
     where: { userId },
